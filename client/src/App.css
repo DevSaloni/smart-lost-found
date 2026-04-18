@@ -6,11 +6,43 @@
   --accent-bg: rgba(255, 46, 126, 0.1);
   --accent-border: rgba(255, 46, 126, 0.5);
 
+  --black: #050505;
+  --black2: #0d0d0d;
+  --black3: #141414;
+  --black4: #1c1c1c;
+  --neon: #FF2D6B;
+  --neon2: #FF6B35;
+  --neon-glow: rgba(255, 45, 107, 0.35);
+  --neon-soft: rgba(255, 45, 107, 0.12);
+  --white: #F5F0EB;
+  --white2: #c8c0b8;
+  --gray: #3a3a3a;
+  --gray2: #252525;
+  --found: #00E5A0;
+  --lost: #FF6B35;
+  --matched: #4FC3F7;
+
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+
   --glass-bg: rgba(255, 255, 255, 0.08);
   --glass-border: rgba(255, 255, 255, 0.2);
 
   --text-h: #ffffff;
-  --border: rgba(255, 255, 255, 0.1);
+  --border: 1px solid rgba(255, 255, 255, 0.07);
 
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
@@ -224,4 +256,32 @@ select {
     right: 0;
     border-right-color: var(--border);
   }
+}
+
+/* Custom Scrollbar for Dashboard */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #050505;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #FF2E7E;
+  box-shadow: 0 0 10px rgba(255, 46, 126, 0.5);
+}
+
+/* Firefox Support */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) #050505;
 }

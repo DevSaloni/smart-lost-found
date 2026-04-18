@@ -13,6 +13,8 @@ import Browse from './pages/Browse';
 import ItemDetails from './pages/ItemDetails';
 
 
+import Dashboard from './pages/Dashboard';
+
 function App() {
     return (
         <div className="min-h-screen bg-[#050505]">
@@ -20,6 +22,7 @@ function App() {
             <main>
                 <Routes>
                     <Route path="/" element={<Home />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/how-it-work" element={<HowItWorks />} />
                     <Route path="/about" element={<About />} />
