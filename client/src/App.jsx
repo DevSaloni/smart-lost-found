@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import './App.css';
+import { Toaster } from 'react-hot-toast';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import AuthPage from './pages/AuthPage';
@@ -17,26 +19,26 @@ import Dashboard from './pages/Dashboard';
 
 function App() {
     return (
-        <div className="min-h-screen bg-[#050505]">
-            <Navbar />
-            <main>
-                <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/auth" element={<AuthPage />} />
-                    <Route path="/how-it-work" element={<HowItWorks />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/faq" element={<FAQ />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/report-item" element={<ReportItem />} />
-                    <Route path="/browse" element={<Browse />} />
-                    <Route path="/item/:id" element={<ItemDetails />} />
-
-
-
-                </Routes>
-            </main>
-        </div>
+        <GoogleOAuthProvider clientId="136383796213-68mi7lq95c90iug44tuoq5a4jjkhjct4.apps.googleusercontent.com">
+            <div className="min-h-screen bg-[#050505]">
+                <Toaster position="top-right" reverseOrder={false} />
+                <Navbar />
+                <main>
+                    <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/how-it-work" element={<HowItWorks />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/faq" element={<FAQ />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/report-item" element={<ReportItem />} />
+                        <Route path="/browse" element={<Browse />} />
+                        <Route path="/item/:id" element={<ItemDetails />} />
+                    </Routes>
+                </main>
+            </div>
+        </GoogleOAuthProvider>
     );
 }
 

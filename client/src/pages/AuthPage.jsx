@@ -1,7 +1,111 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+import { GoogleLogin } from '@react-oauth/google';
+import BASE_URL from "../config.js";
 
 export default function AuthPage() {
-    const [tab, setTab] = useState("signup"); // Default to signup as shown in image
+    const [tab, setTab] = useState("signup");
+    const [formData, setFormData] = useState({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: ""
+    });
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("verified") === "true") {
+            toast.success("Email verified successfully! You can now sign in.");
+            setTab("signin");
+        } else if (params.get("verified") === "false") {
+            toast.error("Email verification failed or token expired.");
+        }
+    }, []);
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setLoading(true);
+        try {
+            const response = await fetch(`${BASE_URL}/api/auth/google`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: credentialResponse.credential })
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Google login failed");
+
+            localStorage.setItem("token", result.token);
+            toast.success("Login successful with Google!");
+            setTimeout(() => { window.location.href = "/"; }, 2000);
+        } catch (err) {
+            toast.error(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        toast.error("Google login failed. Please try again.");
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+
+        // Validation for signup
+        if (tab === "signup") {
+            if (!formData.name || !formData.email || !formData.password) {
+                toast.error("All fields are required");
+                setLoading(false);
+                return;
+            }
+            if (formData.password !== formData.confirmPassword) {
+                toast.error("Passwords do not match");
+                setLoading(false);
+                return;
+            }
+        } else {
+            // Validation for signin
+            if (!formData.email || !formData.password) {
+                toast.error("Email and password are required");
+                setLoading(false);
+                return;
+            }
+        }
+
+        try {
+            const endpoint = tab === "signup" ? "/api/auth/signup" : "/api/auth/login";
+            const response = await fetch(`${BASE_URL}${endpoint}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || result.message || "An error occurred");
+            }
+
+            if (tab === "signup") {
+                toast.success(result.message, { duration: 5000 });
+                setFormData({ name: "", email: "", password: "", confirmPassword: "" });
+            } else {
+                localStorage.setItem("token", result.token);
+                toast.success("Login successful! Redirecting...");
+                setTimeout(() => { window.location.href = "/"; }, 2000);
+            }
+        } catch (err) {
+            toast.error(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-start px-4 relative pt-17 pb-17">
@@ -18,7 +122,7 @@ export default function AuthPage() {
                     </p>
 
                     <h1 className="text-5xl font-bold mt-2 leading-tight">
-                        SIGN IN TO FINDIT.
+                        {tab === "signup" ? "JOIN FINDIT." : "SIGN IN TO FINDIT."}
                     </h1>
 
                     <p className="text-gray-400 mt-4 text-[16px] max-w-sm">
@@ -47,7 +151,7 @@ export default function AuthPage() {
                     {/* Tabs */}
                     <div className="flex border-b border-white/10 mb-6 font-bold">
                         <button
-                            onClick={() => setTab("signin")}
+                            onClick={() => { setTab("signin"); }}
                             className={`flex-1 py-3 text-[10px] tracking-[0.2em] transition ${tab === "signin"
                                 ? "text-[#FF2E7E] border-b-2 border-[#FF2E7E]"
                                 : "text-gray-500"
@@ -56,7 +160,7 @@ export default function AuthPage() {
                             SIGN IN
                         </button>
                         <button
-                            onClick={() => setTab("signup")}
+                            onClick={() => { setTab("signup"); }}
                             className={`flex-1 py-3 text-[10px] tracking-[0.2em] transition ${tab === "signup"
                                 ? "text-[#FF2E7E] border-b-2 border-[#FF2E7E]"
                                 : "text-gray-500"
@@ -67,78 +171,94 @@ export default function AuthPage() {
                     </div>
 
                     {/* Google Button */}
-                    <button className="w-full flex items-center justify-center gap-3 py-2.5 border border-white/10 bg-white/5 text-white rounded-lg mb-4 hover:border-[#FF2E7E] transition text-sm">
-                        <svg width="18" height="18" viewBox="0 0 48 48">
-                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.34 30.28 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                            <path fill="#4285F4" d="M46.1 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.4c-.54 2.9-2.18 5.37-4.64 7.04l7.19 5.59C43.98 37.2 46.1 31.35 46.1 24.5z" />
-                            <path fill="#FBBC05" d="M10.54 28.09c-1.01-2.98-1.01-6.2 0-9.18l-7.98-6.19C.96 16.1 0 19.95 0 24s.96 7.9 2.56 11.28l7.98-7.19z" />
-                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.81l-7.19-5.59c-2.01 1.36-4.6 2.17-8.71 2.17-6.26 0-11.57-4.22-13.46-9.91l-7.98 7.19C6.51 42.62 14.62 48 24 48z" />
-                        </svg>
-                        Continue with Google
-                    </button>
+                    <div className="flex justify-center mb-4 overflow-hidden rounded-lg">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={handleGoogleError}
+                            theme="filled_black"
+                            width="100%"
+                            text="continue_with"
+                        />
+                    </div>
 
                     <div className="text-center text-gray-500 text-[10px] mb-4">or</div>
 
                     {/* FORM */}
-                    <div className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
 
                         {tab === "signup" && (
                             <div>
-                                <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold">FULL NAME</label>
+                                <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase">Full Name</label>
                                 <input
                                     type="text"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleChange}
                                     placeholder="Your full name"
-                                    className="w-full mt-1.5 p-2.5  border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                    className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
                                 />
                             </div>
                         )}
 
                         <div>
-                            <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold">EMAIL</label>
+                            <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase">Email Address</label>
                             <input
                                 type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
                                 placeholder="you@example.com"
-                                className="w-full mt-1.5 p-2.5 border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
                             />
                         </div>
 
                         <div>
-                            <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold">PASSWORD</label>
+                            <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase">Password</label>
                             <input
                                 type="password"
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
                                 placeholder="••••••••"
-                                className="w-full mt-1.5 p-2.5 border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
                             />
                         </div>
 
                         {tab === "signup" && (
                             <div>
-                                <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold">CONFIRM PASSWORD</label>
+                                <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase">Confirm Password</label>
                                 <input
                                     type="password"
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
                                     placeholder="••••••••"
-                                    className="w-full mt-1.5 p-2.5 border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                    className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
                                 />
                             </div>
                         )}
 
-                        <button className="w-full py-3 mt-2 bg-[#FF2E7E] text-black text-xs font-bold tracking-widest rounded-lg shadow-[0_4px_15px_rgba(255,46,126,0.2)] hover:bg-pink-600 transition">
-                            {tab === "signin" ? "SIGN IN" : "CREATE ACCOUNT"}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className={`w-full py-3 mt-2 bg-[#FF2E7E] text-black text-[11px] font-bold tracking-widest rounded-lg shadow-[0_4px_15px_rgba(255,46,126,0.2)] hover:bg-pink-600 transition uppercase ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                            {loading ? "PROCESSING..." : (tab === "signin" ? "SIGN IN" : "CREATE ACCOUNT")}
                         </button>
-                    </div>
+                    </form>
 
                     <div className="text-center mt-5">
                         {tab === "signup" ? (
-                            <p className="text-xs text-gray-400">
+                            <p className="text-[11px] text-gray-400">
                                 Already have an account?{" "}
-                                <button onClick={() => setTab("signin")} className="text-[#FF2E7E] font-semibold hover:underline">
+                                <button onClick={() => { setTab("signin"); }} className="text-[#FF2E7E] font-bold uppercase hover:underline">
                                     Sign in
                                 </button>
                             </p>
                         ) : (
-                            <p className="text-xs text-gray-400">
+                            <p className="text-[11px] text-gray-400">
                                 Don't have an account?{" "}
-                                <button onClick={() => setTab("signup")} className="text-[#FF2E7E] font-semibold hover:underline">
+                                <button onClick={() => { setTab("signup"); }} className="text-[#FF2E7E] font-bold uppercase hover:underline">
                                     Sign up free
                                 </button>
                             </p>

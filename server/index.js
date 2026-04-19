@@ -2,6 +2,12 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import pool from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import createUserTable from "./models/userModel.js";
+
+// Initialize tables
+createUserTable();
+
 
 dotenv.config();
 
@@ -10,6 +16,10 @@ const PORT = process.env.PORT || 2016;
 
 app.use(cors());
 app.use(express.json());
+
+//routes
+app.use("/api/auth", authRoutes);
+
 
 //test route
 app.get("/", async (req, res) => {
@@ -24,6 +34,6 @@ app.get("/", async (req, res) => {
 });
 
 
-app.listen(PORT,() =>{
-    console.log("sever is running on PORT:", PORT);
+app.listen(PORT, () => {
+  console.log("sever is running on PORT:", PORT);
 });
