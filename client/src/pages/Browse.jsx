@@ -203,6 +203,7 @@ export default function Browse() {
                                 <Link
                                     key={report.id}
                                     to={`/item/${report.id}`}
+                                    state={{ context: 'browse' }}
                                     className="group bg-[#0c0c0c] border border-white/10 rounded-[32px] p-6 hover:border-[#FF2E7E]/30 transition-all duration-500 cursor-pointer flex flex-col relative overflow-hidden"
                                 >
                                     {/* Action Button on Hover */}

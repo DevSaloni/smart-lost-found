@@ -13,6 +13,7 @@ import Contact from './pages/Contact';
 import ReportItem from './pages/ReportItem';
 import Browse from './pages/Browse';
 import ItemDetails from './pages/ItemDetails';
+import MatchDetails from './pages/MatchDetails';
 
 
 import Dashboard from './pages/Dashboard';
@@ -35,6 +36,7 @@ function App() {
                         <Route path="/report-item" element={<ReportItem />} />
                         <Route path="/browse" element={<Browse />} />
                         <Route path="/item/:id" element={<ItemDetails />} />
+                        <Route path="/match-details/:matchId" element={<MatchDetails />} />
                     </Routes>
                 </main>
             </div>

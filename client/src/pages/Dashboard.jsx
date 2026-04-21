@@ -1,168 +1,250 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import BASE_URL from "../config.js";
+import toast from "react-hot-toast";
 
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState("dashboard");
+    const [user, setUser] = useState(null);
+    const [userReports, setUserReports] = useState([]);
+    const [userMatches, setUserMatches] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const reports = [
-        { name: "Blue leather wallet", meta: "LOST • SHIVAJINAGAR • APR 3", status: "7 matches", statusType: "matched", dotColor: "var(--lost)" },
-        { name: "House keys (Honda keychain)", meta: "LOST • BANER • APR 1", status: "Searching", statusType: "searching", dotColor: "var(--lost)" },
-        { name: "Samsung phone (found & returned)", meta: "FOUND • FC ROAD • MAR 28", status: "Returned", statusType: "returned", dotColor: "var(--found)" },
-    ];
+    // Chat states
+    const [selectedMatch, setSelectedMatch] = useState(null);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState("");
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [handoffCode, setHandoffCode] = useState(null);
+    const [inputCode, setInputCode] = useState("");
+    const [isVerifying, setIsVerifying] = useState(false);
 
-    const stats = [
-        { label: "Active reports", value: "3" },
-        { label: "New matches", value: "7" },
-        { label: "Items returned", value: "2" },
-    ];
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    const matches = [
-        { id: 101, title: "Blue bifold wallet", meta: "FOUND • SHIVAJINAGAR STATION • REPORTED APR 4", score: 91, icon: "💼" },
-        { id: 102, title: "Leather wallet, dark blue", meta: "FOUND • FC ROAD • REPORTED APR 3", score: 74, icon: "👛" },
-        { id: 103, title: "Navy wallet with ID cards", meta: "FOUND • KOREGAON PARK • REPORTED APR 2", score: 58, icon: "📒" },
-    ];
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            navigate("/auth");
+            return;
+        }
 
-    const navItems = [
-        { id: "dashboard", label: "Dashboard", icon: <rect x="3" y="3" width="7" height="7" /> },
-        { id: "matches", label: "My matches", icon: <><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></> },
-        { id: "chat", label: "Messages", icon: <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /> },
-        { id: "profile", label: "Profile", icon: <><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></> },
-        { id: "notifications", label: "Notifications", icon: <><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></> },
-    ];
+        if (location.state?.activeTab) {
+            setActiveTab(location.state.activeTab);
+        }
 
-    const messages = [
-        { id: 1, sender: "Anonymous Finder", text: "Hi, I think I found your wallet near Shivajinagar station!", time: "10:30 AM", type: "them" },
-        { id: 2, sender: "Me", text: "Really?! Can you describe what's inside?", time: "10:32 AM", type: "me" },
-        { id: 3, sender: "Anonymous Finder", text: "Blue bifold, transit card and some IDs. Small scratch on the back corner?", time: "10:35 AM", type: "them" },
-        { id: 4, sender: "Me", text: "That's definitely mine. How do we meet?", time: "10:36 AM", type: "me" },
-    ];
+        const fetchData = async () => {
+            try {
+                const profileRes = await fetch(`${BASE_URL}/api/auth/profile`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const profileData = await profileRes.json();
+                if (profileRes.ok) {
+                    setUser(profileData.user);
+                } else {
+                    localStorage.removeItem("token");
+                    navigate("/auth");
+                    return;
+                }
+
+                const reportsRes = await fetch(`${BASE_URL}/api/reports/my-reports`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const reportsData = await reportsRes.json();
+                if (reportsRes.ok) setUserReports(reportsData.reports);
+
+                const matchesRes = await fetch(`${BASE_URL}/api/matches/user-matches`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const matchesData = await matchesRes.json();
+                if (matchesRes.ok) setUserMatches(matchesData.matches);
+
+            } catch (error) {
+                console.error("Dashboard error:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [navigate, location.state]);
+
+    useEffect(() => {
+        let interval;
+        if (activeTab === "chat" && selectedMatch) {
+            const fetchMsgs = async () => {
+                const token = localStorage.getItem("token");
+                try {
+                    const res = await fetch(`${BASE_URL}/api/interactions/messages/${selectedMatch.match_id}`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    const data = await res.json();
+                    if (res.ok) setChatMessages(data.messages);
+                } catch (error) {
+                    console.error("Msg fetch error:", error);
+                }
+            };
+            fetchMsgs();
+            interval = setInterval(fetchMsgs, 3000);
+        }
+        return () => clearInterval(interval);
+    }, [activeTab, selectedMatch]);
+
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if ((!newMessage.trim() && !selectedFile) || !selectedMatch || !user) return;
+
+        const token = localStorage.getItem("token");
+        const formData = new FormData();
+        formData.append("match_id", selectedMatch.match_id);
+        formData.append("receiver_id", selectedMatch.owner_user_id === user.id ? selectedMatch.finder_user_id : selectedMatch.owner_user_id);
+        formData.append("message", newMessage);
+        if (selectedFile) formData.append("file", selectedFile);
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/interactions/messages`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` },
+                body: formData
+            });
+            if (res.ok) {
+                setNewMessage("");
+                setSelectedFile(null);
+            }
+        } catch (error) {
+            toast.error("Failed to send");
+        }
+    };
+
+    const handleGenerateCode = async () => {
+        const token = localStorage.getItem("token");
+        try {
+            const res = await fetch(`${BASE_URL}/api/interactions/handoff/generate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ match_id: selectedMatch.match_id })
+            });
+            const data = await res.json();
+            if (res.ok) setHandoffCode(data.code);
+            else toast.error(data.error);
+        } catch (err) {
+            toast.error("Process failed");
+        }
+    };
+
+    const handleVerifyCode = async () => {
+        const token = localStorage.getItem("token");
+        try {
+            const res = await fetch(`${BASE_URL}/api/interactions/handoff/verify`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ match_id: selectedMatch.match_id, code: inputCode })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success("Verified!");
+                setIsVerifying(false);
+                setHandoffCode(null);
+                navigate(0);
+            } else {
+                toast.error(data.error);
+            }
+        } catch (err) {
+            toast.error("Verify failed");
+        }
+    };
+
 
     return (
         <div className="bg-[#050505] text-[#F5F0EB] min-h-screen pt-24 pb-20 px-4 md:px-8 font-['Inter']">
             <div className="max-w-6xl mx-auto">
+                <div className="flex flex-col lg:flex-row gap-6 h-[750px]">
 
-                <div className="flex flex-col lg:flex-row gap-6 items-stretch h-[800px] font-['Inter']">
-                    {/* Sidebar Panel */}
-                    <div className="lg:w-[280px] flex flex-col bg-[#0d0d0d] border border-white/10 rounded-3xl overflow-hidden shadow-2xl transition-all hover:border-white/20">
-                        {/* User Block */}
-                        <div className="p-8 border-b border-white/5 bg-gradient-to-b from-white/[0.02] to-transparent">
-                            <div className="flex flex-col items-center text-center">
-                                <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#FF2D6B] to-[#FF6B35] flex items-center justify-center text-2xl font-black mb-5 shadow-[0_0_30px_rgba(255,45,107,0.3)] transform -rotate-3 hover:rotate-0 transition-transform duration-500">
-                                    PK
-                                </div>
-                                <h2 className="text-xl font-bold tracking-tight font-['Inter']">Priya Kulkarni</h2>
-                                <p className="text-[12px] text-gray-500 mb-5 font-['JetBrains_Mono'] uppercase tracking-[2px]">ID: 8429-PX</p>
-                                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#FF2D6B]/10 border border-[#FF2D6B]/20 rounded-full text-[11px] font-bold text-[#FF2E7E] uppercase tracking-widest font-['Inter']">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF2E7E] animate-pulse" />
-                                    PRO MEMBER
-                                </div>
+                    {/* Sidebar */}
+                    <div className="lg:w-[280px] bg-[#0d0d0d] border border-white/10 rounded-3xl p-6 flex flex-col">
+                        <div className="text-center mb-10">
+                            <div className="w-20 h-20 bg-gradient-to-tr from-[#FF2D6B] to-[#FF6B35] rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl font-black">
+                                {user?.name?.substring(0, 2).toUpperCase() || "??"}
                             </div>
+                            <h2 className="text-xl font-bold">{user?.name || "User"}</h2>
+                            <p className="text-sm text-gray-500 font-medium lowercase mt-0.5">{user?.email}</p>
+                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-2">Verified Hub</p>
                         </div>
 
-                        {/* Dash Nav */}
-                        <div className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-                            <div className="px-5 py-3 text-[11px] font-bold text-gray-600 uppercase tracking-[4px] mb-2 font-['Inter']">Menu</div>
-                            {navItems.map((item) => (
+                        <nav className="flex-1 space-y-2">
+                            {[
+                                { id: "dashboard", label: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+                                { id: "matches", label: "My matches", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" },
+                                { id: "chat", label: "Messages", icon: "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" }
+                            ].map(item => (
                                 <button
                                     key={item.id}
                                     onClick={() => setActiveTab(item.id)}
-                                    className={`w-full flex items-center gap-4 px-6 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-300 relative group ${activeTab === item.id
-                                        ? "bg-white/[0.03] text-[#FF2E7E] shadow-[inset_0_0_20px_rgba(255,255,255,0.02)]"
-                                        : "text-gray-500 hover:text-white hover:bg-white/[0.02]"
-                                        }`}
+                                    className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[15px] font-bold transition-all ${activeTab === item.id ? "bg-white/[0.03] text-[#FF2E7E]" : "text-gray-500 hover:text-white"}`}
                                 >
-                                    {activeTab === item.id && (
-                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-7 bg-[#FF2E7E] rounded-r-full shadow-[0_0_20px_#FF2E7E]" />
-                                    )}
-                                    <div className={`transition-transform group-hover:scale-110 ${activeTab === item.id ? "text-[#FF2E7E]" : "text-gray-600"}`}>
-                                        {item.id === 'dashboard' && (
-                                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /></svg>
-                                        )}
-                                        {item.id === 'matches' && (
-                                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 21l-4.35-4.35M19 11a8 8 0 11-16 0 8 8 0 0116 0zM11 8v6M8 11h6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        )}
-                                        {item.id === 'chat' && (
-                                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 11-7.6-11.7 8.38 8.38 0 013.8.9L22 4l-1.5 6.5z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        )}
-                                        {item.id === 'profile' && (
-                                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        )}
-                                        {item.id === 'notifications' && (
-                                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        )}
-                                    </div>
-                                    <span className="font-['Inter'] tracking-tight">{item.label}</span>
+                                    <svg className={`w-4 h-4 ${activeTab === item.id ? "text-[#FF2E7E]" : "text-gray-600"}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg>
+                                    {item.label}
                                 </button>
                             ))}
-                        </div>
+                        </nav>
 
-                        {/* Sidebar Footer */}
-                        <div className="p-6 border-t border-white/5 bg-white/[0.01]">
-                            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                                <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.4)]" />
-                                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest font-['Inter']">System Protocol Online</span>
+                        <div className="pt-6 border-t border-white/5 mt-auto">
+                            <div className="bg-white/[0.02] p-3 rounded-xl flex items-center gap-3">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">System Online</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Main Content Area */}
-                    <div className="flex-1 flex flex-col bg-[#0d0d0d] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative transition-all hover:border-white/20 h-full">
-                        {/* Tab Header Decoration */}
-                        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none text-white">
-                            <svg width="200" height="200" viewBox="0 0 200 200" fill="none">
-                                <circle cx="150" cy="50" r="100" stroke="currentColor" strokeWidth="1" strokeDasharray="10 10" />
-                            </svg>
-                        </div>
+                    {/* Content Section */}
+                    <div className="flex-1 bg-[#0d0d0d] border border-white/10 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+                        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
 
-                        <div className="flex-1 overflow-y-auto p-8 md:p-10 custom-scrollbar h-full">
-                            {/* 1. OVERVIEW TAB */}
+                            {/* Dashboard Tab */}
                             {activeTab === "dashboard" && (
-                                <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-700">
+                                <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                                     <header>
-                                        <h2 className="text-2xl font-bold tracking-tight mb-2 font-['Inter']">Activity Hub</h2>
-                                        <p className="text-gray-400 text-[15px] leading-relaxed font-['Inter']">Welcome back, Priya. Here's what's happening today.</p>
+                                        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+                                        <p className="text-gray-500 text-sm mt-1">Recovery logs for {user?.name}</p>
                                     </header>
 
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        {stats.map((stat) => (
-                                            <div key={stat.label} className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 transition-all hover:border-[#FF2E7E]/40 hover:bg-white/[0.04] group relative overflow-hidden">
-                                                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-[#FF2E7E]/5 rounded-full blur-3xl group-hover:bg-[#FF2E7E]/10 transition-colors" />
-                                                <div className="text-5xl font-black mb-3  group-hover:text-[#FF2E7E] transition-colors relative z-10">{stat.value}</div>
-                                                <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest relative z-10 font-['Inter'] leading-relaxed">{stat.label}</div>
+                                        {[
+                                            { label: "Active reports", value: userReports.length },
+                                            { label: "Matches found", value: userMatches.length },
+                                            { label: "Successfully Return", value: userMatches.filter(m => m.match_status === 'resolved').length }
+                                        ].map((stat, i) => (
+                                            <div key={i} className="bg-white/[0.02] border border-white/5 rounded-2xl p-8">
+                                                <div className="text-4xl font-bold text-white mb-2">{stat.value}</div>
+                                                <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">{stat.label}</div>
                                             </div>
                                         ))}
                                     </div>
 
-                                    <div className="bg-white/[0.01] border border-white/5 rounded-3xl overflow-hidden shadow-sm">
-                                        <div className="flex items-center justify-between p-8 border-b border-white/5 bg-white/[0.02]">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-1.5 h-8 bg-[#FF2E7E] rounded-full" />
-                                                <h3 className="text-base font-bold uppercase tracking-wider font-['Inter']">Active Reports</h3>
-                                            </div>
-                                            <Link to="/report-item" className="px-5 py-2.5 bg-[#FF2D6B] text-white text-[12px] font-bold uppercase tracking-wide rounded-xl hover:bg-[#C30052] transition-all hover:scale-105 active:scale-95 shadow-[0_10px_20px_rgba(255,45,107,0.2)] font-['Inter']">
-                                                + Create Report
-                                            </Link>
+                                    <div className="bg-white/[0.01] border border-white/5 rounded-3xl overflow-hidden shadow-inner">
+                                        <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+                                            <h3 className="text-[11px] font-bold uppercase tracking-[4px] text-gray-500">Your Reports</h3>
+                                            <Link to="/report-item" className="bg-[#FF2E7E] px-4 py-2  text-[13px] font-bold shadow-lg">+ New Report</Link>
                                         </div>
                                         <div className="divide-y divide-white/5">
-                                            {reports.map((report, i) => (
-                                                <div key={i} className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-8 hover:bg-white/[0.03] transition-all group cursor-pointer border-l-4 border-transparent hover:border-l-[#FF2E7E]">
-                                                    <div className="flex items-start gap-4">
-                                                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-lg">
-                                                            {report.name.toLowerCase().includes('wallet') ? '💼' : report.name.toLowerCase().includes('keys') ? '🔑' : '🔍'}
+                                            {userReports.length === 0 ? <div className="p-16 text-center text-gray-700">No reports in cache.</div> : userReports.map((report, i) => (
+                                                <div key={i} className="p-8 flex items-center justify-between hover:bg-white/[0.02] transition-all group">
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="w-14 h-14 bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-inner">
+                                                            {report.image_url ? <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
                                                         </div>
                                                         <div>
-                                                            <h4 className="text-lg font-bold mb-1 group-hover:text-[#FF2E7E] transition-colors leading-tight font-['Inter']">{report.name}</h4>
-                                                            <div className="text-[12px] font-black text-gray-500 uppercase tracking-[2px] font-['JetBrains_Mono'] opacity-70 leading-relaxed font-['Inter']">{report.meta}</div>
+                                                            <h4 className="text-lg font-bold text-white mb-0.5">{report.item_name}</h4>
+                                                            <div className="text-[11px] text-gray-500 font-bold uppercase tracking-widest">{report.type} • {report.location}</div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <span className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-[2px] border transition-all font-['Inter'] ${report.statusType === 'matched' ? 'bg-[#FF2E7E]/10 text-[#FF2E7E] border-[#FF2E7E]/30 shadow-[0_0_15px_rgba(255,46,126,0.1)]' :
-                                                            report.statusType === 'searching' ? 'bg-[#FF6B35]/10 text-[#FF6B35] border-[#FF6B35]/30 shadow-[0_0_15px_rgba(255,107,53,0.1)]' :
-                                                                'bg-[#00E5A0]/10 text-[#00E5A0] border-[#00E5A0]/30 shadow-[0_0_15px_rgba(0,229,160,0.1)]'
-                                                            }`}>
-                                                            {report.status}
-                                                        </span>
-                                                    </div>
+                                                    <Link to={`/item/${report.id}`} state={{ context: 'dashboard' }} className="px-4 py-2 border border-white/10 rounded-xl text-[10px] font-black text-gray-500 hover:text-white transition-all uppercase tracking-widest">Details</Link>
                                                 </div>
                                             ))}
                                         </div>
@@ -170,44 +252,27 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            {/* 2. MATCHES TAB */}
+                            {/* My Matches Tab */}
                             {activeTab === "matches" && (
-                                <div className="space-y-8 animate-in slide-in-from-right-4 duration-700">
-                                    <header className="flex items-center justify-between mb-10">
-                                        <div>
-                                            <h2 className="text-2xl font-bold tracking-tight mb-2 font-['Inter']">Smart Matches</h2>
-                                            <p className="text-gray-400 text-[15px] leading-relaxed font-['Inter']">We've found these items that match your reports. Review similarity scores below.</p>
-                                        </div>
-                                        <div className="p-4 bg-[#FF2E7E]/10 rounded-2xl border border-[#FF2E7E]/20 flex items-center gap-3">
-                                            <span className="text-xl animate-bounce">⚡</span>
-                                            <span className="text-[11px] font-black text-[#FF2E7E] uppercase tracking-widest font-['Inter']">AI Assisted</span>
-                                        </div>
-                                    </header>
-
+                                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                                    <h2 className="text-2xl font-bold">My Matches</h2>
                                     <div className="grid gap-6">
-                                        {matches.map((item) => (
-                                            <div key={item.id} className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-10 group hover:border-[#FF2E7E]/40 transition-all hover:bg-white/[0.04]">
-                                                <div className="w-32 h-32 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-5xl group-hover:scale-110 transition-transform shadow-2xl relative overflow-hidden">
-                                                    <div className="absolute inset-0 bg-gradient-to-tr from-[#FF2E7E]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                    {item.icon}
+                                        {userMatches.length === 0 ? <div className="p-24 text-center text-gray-700">Awaiting match verification.</div> : userMatches.map((match, i) => (
+                                            <div key={i} className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-10 group hover:border-[#FF2E7E]/40 transition-all">
+                                                <div className="w-32 h-32 bg-white/5 rounded-2xl overflow-hidden shadow-2xl relative border border-white/5">
+                                                    {match.matched_image ? <img src={`${BASE_URL}/uploads/${match.matched_image}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
                                                 </div>
                                                 <div className="flex-1 text-center md:text-left">
-                                                    <div className="inline-block px-3 py-1 bg-[#FF2E7E]/10 rounded-full text-[10px] font-black text-[#FF2E7E] uppercase tracking-widest mb-3 font-['Inter'] shadow-[0_0_10px_rgba(255,46,126,0.1)]">Verified Spot</div>
-                                                    <h4 className="text-xl font-bold mb-2 group-hover:text-[#FF2E7E] transition-colors leading-tight font-['Inter']">{item.title}</h4>
-                                                    <div className="text-[11px] font-black text-gray-500 uppercase tracking-[2px] mb-6 leading-relaxed font-['Inter']">{item.meta}</div>
-                                                    <div className="w-full max-w-md mx-auto md:mx-0">
-                                                        <div className="flex justify-between items-end mb-2">
-                                                            <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest font-['Inter']">Match Quality</div>
-                                                            <div className="text-lg font-black text-[#FF2E7E] ">{item.score}%</div>
-                                                        </div>
-                                                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
-                                                            <div className="h-full bg-gradient-to-r from-[#FF2E7E]/50 to-[#FF2E7E] rounded-full transition-all duration-1000 shadow-[0_0_10px_#FF2E7E]" style={{ width: `${item.score}%` }} />
-                                                        </div>
+                                                    <h3 className="text-xl font-bold mb-1 text-white">{match.matched_item}</h3>
+                                                    <p className="text-xs text-gray-500 mb-4 uppercase tracking-widest font-bold">{match.matched_type} • {match.matched_location}</p>
+                                                    <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5">
+                                                        <div className="h-full bg-[#FF2E7E]" style={{ width: `${match.similarity_score}%` }} />
                                                     </div>
+                                                    <div className="text-[10px] font-bold text-gray-500 mt-2 uppercase tracking-widest">Similarity Factor: {match.similarity_score}%</div>
                                                 </div>
-                                                <div className="flex flex-col gap-3 min-w-[200px]">
-                                                    <button className="w-full py-3 bg-[#FF2D6B] text-white text-[12px] font-bold uppercase tracking-wide rounded-2xl hover:bg-[#C30052] transition-all hover:shadow-[0_10px_20px_rgba(255,45,107,0.3)] hover:-translate-y-1 font-['Inter']">Connect Now</button>
-                                                    <button className="w-full py-3 border border-white/10 text-gray-400 text-[12px] font-bold uppercase tracking-wide rounded-2xl hover:border-white hover:text-white transition-all bg-white/[0.01] font-['Inter']">Full Details</button>
+                                                <div className="flex gap-4">
+                                                    <button onClick={() => { setSelectedMatch(match); setActiveTab('chat'); }} disabled={match.match_status === 'resolved'} className={`px-6 py-3 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${match.match_status === 'resolved' ? "bg-gray-800 text-gray-400" : "bg-[#FF2E7E] text-white hover:bg-[#C30052]"}`}>Relay</button>
+                                                    <Link to={`/item/${match.matched_report_id}`} state={{ context: 'match', matchData: match }} className="px-6 py-3 border border-white/10 text-xs font-bold uppercase rounded-xl hover:text-white transition-all text-center">Details</Link>
                                                 </div>
                                             </div>
                                         ))}
@@ -215,185 +280,118 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            {/* 3. CHAT TAB */}
+                            {/* Chat Tab - Messages */}
                             {activeTab === "chat" && (
-                                <div className="h-full flex flex-col animate-in zoom-in-95 duration-700 bg-white/[0.01] rounded-3xl border border-white/5 shadow-inner overflow-hidden">
-                                    <div className="flex flex-1 overflow-hidden">
-                                        {/* Chat Sidebar */}
-                                        <div className="w-64 border-r border-white/5 hidden md:flex flex-col bg-white/[0.01]">
+                                <div className="h-full flex flex-col animate-in zoom-in-95 duration-500 bg-white/[0.01] rounded-[28px] border border-white/5 overflow-hidden">
+                                    <div className="flex flex-1 overflow-hidden h-full">
+                                        <div className="w-47 border-r border-white/5 hidden md:flex flex-col bg-white/[0.01]">
                                             <div className="p-8 border-b border-white/5 flex items-center justify-between">
-                                                <span className="font-black uppercase text-[12px] tracking-[4px] text-gray-500 font-['Inter']">Inbox</span>
-                                                <span className="px-2 py-1 bg-white/5 rounded-lg text-[11px] text-[#FF2E7E] font-bold font-['Inter'] border border-[#FF2E7E]/20">2</span>
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Channels</span>
+                                                <span className="text-[9px] font-bold px-2 py-1 bg-white/5 rounded-lg">{userMatches.length}</span>
                                             </div>
                                             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                                <div className="p-6 bg-[#FF2D6B]/5 border-l-4 border-[#FF2E7E] cursor-pointer relative group transition-all">
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <div className="text-[14px] font-bold  tracking-tight">Anonymous Finder</div>
-                                                        <span className="w-2 h-2 bg-[#FF2E7E] rounded-full shadow-[0_0_10px_#FF2E7E]" />
+                                                {userMatches.map(m => (
+                                                    <div key={m.match_id} onClick={() => setSelectedMatch(m)} className={`p-8 cursor-pointer border-l-4 transition-all ${selectedMatch?.match_id === m.match_id ? "bg-[#FF2D6B]/5 border-[#FF2E7E] text-white font-bold" : "border-transparent text-gray-500 hover:bg-white/5"}`}>
+                                                        <h4 className="text-sm tracking-tight mb-1">{m.matched_item}</h4>
+                                                        <div className="text-[9px] font-bold opacity-50 uppercase">Ref ID: {String(m.match_id).substring(0, 8)}</div>
                                                     </div>
-                                                    <p className="text-[12px] text-gray-400 font-medium truncate mb-1 font-['Inter'] leading-relaxed">I found your wallet near Shivajinagar...</p>
-                                                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest font-['Inter']">Updated 2m ago</span>
-                                                </div>
-                                                <div className="p-6 hover:bg-white/[0.03] cursor-pointer border-l-4 border-transparent transition-all opacity-50 gray-scale hover:grayscale-0 hover:opacity-100">
-                                                    <div className="text-[14px] font-bold  tracking-tight mb-2">Community Guide</div>
-                                                    <p className="text-[12px] text-gray-500 font-medium truncate mb-1 font-['Inter'] leading-relaxed">Matched 3 days ago...</p>
-                                                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest font-['Inter']">3 days ago</span>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
-                                        {/* Chat Area */}
-                                        <div className="flex-1 flex flex-col bg-gradient-to-b from-white/[0.01] to-transparent">
-                                            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF2D6B] to-[#FF6B35] flex items-center justify-center font-black text-sm text-white shadow-lg">AF</div>
-                                                    <div>
-                                                        <div className="text-[15px] font-semibold uppercase tracking-wide font-['Inter'] text-white leading-tight">Anonymous Finder</div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                                            <span className="text-[10px] font-bold text-gray-500 tracking-widest uppercase font-['Inter']">Encryption Active</span>
+
+                                        <div className="flex-1 flex flex-col relative bg-gradient-to-b from-white/[0.01] to-transparent">
+                                            {selectedMatch ? (
+                                                <>
+                                                    <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF2D6B] to-[#FF6B35] flex items-center justify-center font-black text-white text-xs">
+                                                                {selectedMatch.matched_item.substring(0, 2).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-bold text-[15px] uppercase tracking-wide text-white leading-tight">{selectedMatch.matched_item}</h4>
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                                                    <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">Encrypted Relay</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
+                                                        <button onClick={() => setIsVerifying(true)} disabled={selectedMatch.match_status === 'resolved'} className={`px-4 py-2 border border-white/10 rounded-xl text-[10px] font-bold uppercase transition-all ${selectedMatch.match_status === 'resolved' ? "opacity-30" : "text-[#FF2E7E] hover:bg-[#FF2E7E] hover:text-black border-[#FF2E7E]/30"}`}>
+                                                            {selectedMatch.match_status === 'resolved' ? "Closed" : "Handoff Token"}
+                                                        </button>
                                                     </div>
-                                                </div>
-                                                <button className="px-4 py-2 border border-white/10 rounded-xl text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-white hover:border-white transition-all font-['Inter']">Report User</button>
-                                            </div>
-                                            <div className="flex-1 p-8 overflow-y-auto space-y-6 custom-scrollbar">
-                                                {messages.map((msg) => (
-                                                    <div key={msg.id} className={`flex ${msg.type === 'me' ? 'justify-end' : 'justify-start'}`}>
-                                                        <div className={`max-w-[70%] p-5 rounded-2xl text-[14px] font-medium leading-relaxed shadow-xl transform transition-transform hover:scale-[1.02] ${msg.type === 'me' ? 'bg-[#FF2E7E] text-white rounded-tr-none shadow-[0_10px_30px_rgba(255,46,126,0.2)]' : 'bg-[#1c1c1c] text-white border border-white/5 rounded-tl-none'
-                                                            }`}>
-                                                            <p className="font-['Inter'] leading-relaxed">{msg.text}</p>
-                                                            <div className={`text-[10px] mt-3 opacity-50 font-bold tracking-widest font-['Inter'] ${msg.type === 'me' ? 'text-right' : 'text-left'}`}>{msg.time}</div>
-                                                        </div>
+
+                                                    <div className="flex-1 p-8 overflow-y-auto space-y-6 custom-scrollbar bg-black/20 relative">
+                                                        {selectedMatch.match_status === 'resolved' && (
+                                                            <div className="mx-auto max-w-sm text-center p-8 bg-green-500/5 border border-green-500/20 rounded-[32px] mb-8">
+                                                                <div className="text-green-500 text-[10px] font-black uppercase tracking-widest mb-1 leading-none">Success</div>
+                                                                <h4 className="text-white font-bold text-lg">Inventory Recovered</h4>
+                                                            </div>
+                                                        )}
+
+                                                        {chatMessages?.map((msg, i) => (
+                                                            <div key={i} className={`flex flex-col gap-2 ${msg.sender_id === user?.id ? "items-end" : "items-start"}`}>
+                                                                {msg.file_url && (
+                                                                    <div className={`max-w-[70%] border border-white/5 rounded-2xl overflow-hidden shadow-2xl bg-[#111] p-1 ${msg.sender_id === user?.id ? "rounded-tr-none" : "rounded-tl-none"}`}>
+                                                                        {msg.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                                                            <img src={`${BASE_URL}/uploads/chat_files/${msg.file_url}`} className="max-w-full max-h-[350px] object-cover rounded-xl" />
+                                                                        ) : (
+                                                                            <a href={`${BASE_URL}/uploads/chat_files/${msg.file_url}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-8 bg-white/5 text-[10px] font-bold uppercase text-white hover:text-[#FF2E7E]">
+                                                                                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xl">📂</div>
+                                                                                <span>Download Asset</span>
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                                {msg.message && (
+                                                                    <div className={`p-4 rounded-[22px] text-[14px] font-medium leading-relaxed max-w-[80%] shadow-lg ${msg.sender_id === user?.id ? "bg-[#FF2E7E] text-white rounded-tr-none shadow-md" : "bg-[#181818] text-[#F5F0EB] border border-white/5 rounded-tl-none"}`}>
+                                                                        <p>{msg.message}</p>
+                                                                    </div>
+                                                                )}
+                                                                <span className="text-[8px] text-gray-700 font-bold uppercase mt-1">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            </div>
+                                                        ))}
+
+                                                        {isVerifying && (
+                                                            <div className="absolute inset-0 bg-black/95 backdrop-blur-2xl flex items-center justify-center p-10 z-50">
+                                                                <div className="max-w-xs w-full bg-[#111] border border-[#FF2E7E]/30 p-12 rounded-[56px] text-center shadow-2xl relative">
+                                                                    <h3 className="text-xl font-bold uppercase tracking-[8px] text-white mb-8 leading-none">Trust Token</h3>
+                                                                    {user?.id === selectedMatch.owner_user_id ? (
+                                                                        <div className="space-y-10">
+                                                                            <p className="text-[11px] text-gray-600 font-bold uppercase tracking-wider">Provide this to the finder</p>
+                                                                            {handoffCode ? (
+                                                                                <div className="text-5xl font-black text-[#FF2E7E] bg-white/5 py-8 rounded-[32px] tracking-[5px] animate-pulse">{handoffCode}</div>
+                                                                            ) : (
+                                                                                <button onClick={handleGenerateCode} className="w-full py-5 bg-[#FF2E7E] text-white font-bold uppercase tracking-widest text-[11px] rounded-[32px] shadow-2xl">Generate Code</button>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="space-y-10">
+                                                                            <p className="text-[11px] text-gray-600 font-bold uppercase tracking-wider">Enter owner's token</p>
+                                                                            <input type="text" maxLength="6" value={inputCode} onChange={e => setInputCode(e.target.value)} className="w-full bg-black border border-white/10 rounded-[32px] py-8 text-center text-4xl font-black outline-none focus:border-[#FF2E7E] text-white tracking-[15px]" placeholder="000000" />
+                                                                            <button onClick={handleVerifyCode} className="w-full py-5 bg-[#FF2E7E] text-white font-black uppercase tracking-widest text-[11px] rounded-[32px] shadow-2xl">Authorise Relay</button>
+                                                                        </div>
+                                                                    )}
+                                                                    <button onClick={() => { setIsVerifying(false); setHandoffCode(null); }} className="mt-10 text-[9px] font-bold text-gray-700 uppercase tracking-[6px] hover:text-white">Abort Relay</button>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ))}
-                                            </div>
-                                            <div className="p-8 bg-white/[0.02] border-t border-white/5">
-                                                <div className="flex gap-4 p-2.5 bg-[#050505] border border-white/10 rounded-2xl focus-within:border-[#FF2E7E] transition-all">
-                                                    <input className="flex-1 bg-transparent px-4 text-[14px] outline-none placeholder:text-gray-600 font-['Inter']" placeholder="Type a message privately..." />
-                                                    <button className="p-3 bg-[#FF2E7E] text-white rounded-xl shadow-[0_5px_15px_rgba(255,45,107,0.3)] hover:scale-105 active:scale-95 transition-all">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                                                            <path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
-                            {/* 4. PROFILE TAB */}
-                            {activeTab === "profile" && (
-                                <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-700">
-                                    <header>
-                                        <h2 className="text-2xl font-bold mb-2 font-['Inter']">My Profile</h2>
-                                        <p className="text-gray-400 text-[15px] leading-relaxed font-['Inter']">Manage your personal identity and security settings.</p>
-                                    </header>
-
-                                    <div className="bg-gradient-to-r from-[#FF2D6B]/10 to-[#FF6B35]/10 border border-white/10 rounded-3xl p-10 flex flex-col md:flex-row items-center gap-10">
-                                        <div className="relative group">
-                                            <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#FF2D6B] to-[#FF6B35] flex items-center justify-center text-3xl font-black shadow-[0_15px_40px_rgba(255,45,107,0.4)] relative z-10 text-white">
-                                                PK
-                                            </div>
-                                        </div>
-
-                                        <div className="text-center md:text-left">
-                                            <h2 className="text-xl font-bold mb-1 font-['Inter']">Priya Kulkarni</h2>
-                                            <p className="text-[13px] text-gray-500 font-black uppercase tracking-[3px] mb-6 font-['Inter'] font-semibold leading-relaxed">Pune, India • Joined Jan 2025</p>
-
-                                            <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                                                <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[11px] font-bold text-[#FF2E7E] uppercase tracking-widest flex items-center gap-2 font-['Inter'] shadow-sm">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF2E7E]" />
-                                                    4.8 Trust Score
-                                                </div>
-                                                <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[11px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-2 font-['Inter'] shadow-sm">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                                                    Identity Verified
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid md:grid-cols-2 gap-8">
-                                        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 hover:border-[#FF2E7E]/40 transition-all group">
-                                            <div className="flex items-center gap-4 mb-8 text-white">
-                                                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xl">🛡️</div>
-                                                <h3 className="text-[13px] font-bold uppercase tracking-widest text-gray-400 font-['Inter']">Security</h3>
-                                            </div>
-                                            <div className="space-y-4">
-                                                {[
-                                                    { label: "Email Verification", val: "Verified", color: "text-green-400" },
-                                                    { label: "Phone Auth", val: "Setup Pending", color: "text-yellow-400" },
-                                                    { label: "Two-Factor Auth", val: "Disabled", color: "text-red-400" }
-                                                ].map((row, i) => (
-                                                    <div key={i} className="flex justify-between items-center py-4 border-b border-white/5 last:border-0 border-white/5 font-['Inter']">
-                                                        <span className="text-[14px] font-bold text-gray-500">{row.label}</span>
-                                                        <span className={`text-[12px] font-black uppercase tracking-widest ${row.color}`}>{row.val}</span>
+                                                    <div className="p-6 bg-white/[0.02] border-t border-white/5">
+                                                        <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-4 p-2.5 bg-[#050505] border border-white/10 rounded-[32px] focus-within:border-[#FF2E7E]/50 transition-all group items-center">
+                                                            <label className="w-12 h-12 flex items-center justify-center cursor-pointer hover:bg-white/5 rounded-2xl transition-all flex-shrink-0">
+                                                                <input type="file" className="hidden" onChange={e => setSelectedFile(e.target.files[0])} />
+                                                                <svg className={`w-5 h-5 transition-colors ${selectedFile ? 'text-[#FF2E7E]' : 'text-gray-500'}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                            </label>
+                                                            <input className="flex-1 bg-transparent px-2 text-[15px] outline-none placeholder:text-gray-700 font-medium h-full" placeholder="Transmit secure message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} />
+                                                            <button type="submit" className="w-12 h-12 flex items-center justify-center bg-gradient-to-tr from-[#FF2E7E] to-[#FF4B8B] text-white rounded-2xl shadow-[0_4px_15px_rgba(255,46,126,0.3)] hover:shadow-[0_6px_20px_rgba(255,46,126,0.4)] hover:scale-105 active:scale-95 transition-all flex-shrink-0 border border-white/10">
+                                                                <svg className="w-5 h-5 transform rotate-45 -mt-0.5 -mr-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7z" /></svg>
+                                                            </button>
+                                                        </form>
+                                                        {selectedFile && <div className="mt-3 ml-20 text-[9px] font-bold text-[#FF2E7E] uppercase tracking-widest flex items-center gap-2">Ready for relay: {selectedFile.name} <button onClick={() => setSelectedFile(null)} className="text-gray-600 hover:text-white">✕</button></div>}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 hover:border-[#FF2E7E]/40 transition-all group">
-                                            <div className="flex items-center gap-4 mb-8 text-white">
-                                                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xl">👤</div>
-                                                <h3 className="text-[13px] font-bold uppercase tracking-widest text-gray-400 font-['Inter']">Account Details</h3>
-                                            </div>
-                                            <div className="space-y-4">
-                                                {[
-                                                    { label: "Legal Name", val: "Priya Kulkarni" },
-                                                    { label: "Public Handle", val: "@priya_k" },
-                                                    { label: "Primary Email", val: "priya@example.com" }
-                                                ].map((row, i) => (
-                                                    <div key={i} className="flex justify-between items-center py-4 border-b border-white/5 last:border-0 border-white/5 font-['Inter']">
-                                                        <span className="text-[14px] font-bold text-gray-500">{row.label}</span>
-                                                        <span className="text-[14px] font-black text-white">{row.val}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-end gap-4 mt-8">
-                                        <button className="px-6 py-3 border border-white/10 rounded-2xl text-[12px] font-bold uppercase tracking-wide hover:border-white transition-all font-['Inter']">Edit Details</button>
-                                        <button className="px-6 py-3 bg-[#FF2D6B] text-white text-[12px] font-bold uppercase tracking-wide rounded-2xl shadow-xl hover:bg-[#C30052] transition-all font-['Inter']">Save Changes</button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 5. NOTIFICATIONS TAB */}
-                            {activeTab === "notifications" && (
-                                <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-700 font-['Inter']">
-                                    <header>
-                                        <h2 className="text-2xl font-bold tracking-tight mb-2 font-['Inter']">Notification Hub</h2>
-                                        <p className="text-gray-400 text-[15px] leading-relaxed">Control how and when you receive matches and updates.</p>
-                                    </header>
-
-                                    <div className="bg-white/[0.01] border border-white/5 rounded-3xl divide-y divide-white/5 overflow-hidden">
-                                        {[
-                                            { label: "Intelligent Matches", desc: "Get notified immediately when highly probable matches are detected." },
-                                            { label: "Direct Messages", desc: "Alerts for new messages from finders or owners." },
-                                            { label: "Status Updates", desc: "Track progress of your reported items in real-time." },
-                                            { label: "Marketing Alerts", desc: "Updates about platform features and local safety news.", off: true }
-                                        ].map((opt, i) => (
-                                            <div key={i} className="p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 group hover:bg-white/[0.02] transition-all">
-                                                <div>
-                                                    <h4 className="font-bold text-lg mb-2 group-hover:text-[#FF2E7E] transition-colors font-['Inter'] leading-none">{opt.label}</h4>
-                                                    <p className="text-[14px] text-gray-400 font-medium tracking-wide max-w-md leading-relaxed">{opt.desc}</p>
-                                                </div>
-                                                <div className={`w-16 h-8 rounded-full p-1.5 cursor-pointer transition-all duration-300 relative ${opt.off ? 'bg-white/5' : 'bg-[#FF2E7E]'}`}>
-                                                    <div className={`w-5 h-5 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.4)] transition-transform duration-300 ${opt.off ? '' : 'translate-x-8'}`} />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="p-8 bg-[#FF2E7E]/5 border border-[#FF2E7E]/20 rounded-3xl flex flex-col md:flex-row gap-6 items-center">
-                                        <div className="w-16 h-16 rounded-2xl bg-[#FF2E7E]/10 flex items-center justify-center text-3xl flex-shrink-0 shadow-inner">🔔</div>
-                                        <div>
-                                            <h4 className="text-[13px] font-bold uppercase tracking-wider text-[#FF2E7E] mb-2 font-['Inter'] leading-tight">Push Notification Engine</h4>
-                                            <p className="text-[14px] text-gray-400 font-medium leading-relaxed font-['Inter']">Our real-time notification engine ensures you never miss a match. We recommend keeping "Intelligent Matches" enabled for the fastest recovery of your belongings.</p>
+                                                </>
+                                            ) : <div className="flex-1 flex items-center justify-center text-gray-800 text-xs font-black uppercase tracking-[15px] p-20 text-center animate-pulse">Select a relay channel</div>}
                                         </div>
                                     </div>
                                 </div>
@@ -406,3 +404,4 @@ export default function Dashboard() {
         </div>
     );
 }
+

@@ -85,6 +85,15 @@ export const login = async (req, res) => {
     }
 }
 
+export const getProfile = async (req, res) => {
+    try {
+        const user = req.user;
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+};
+
 export const googleLogin = async (req, res) => {
     const { token } = req.body;
     try {

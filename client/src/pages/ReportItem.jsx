@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import toast from "react-hot-toast";
+import BASE_URL from "../config.js";
+import { useNavigate } from "react-router-dom";
 
 const categories = [
     "Wallet / Purse",
@@ -19,10 +22,101 @@ const tips = [
 ];
 
 export default function ReportItem() {
-    const [reportType, setReportType] = useState("found"); // lost or found
+    const navigate = useNavigate();
+    const fileInputRef = useRef(null);
+    const [reportType, setReportType] = useState("lost"); // lost or found
     const [categoryOpen, setCategoryOpen] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState(categories[0]);
-    const [alertMethod, setAlertMethod] = useState("push");
+    const [loading, setLoading] = useState(false);
+
+    const [formData, setFormData] = useState({
+        item_name: "",
+        category: categories[0],
+        location: "",
+        date: "",
+        description: "",
+        identifiers: "",
+        alert_method: "push"
+    });
+
+    const [image, setImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error("Image size should be less than 10MB");
+                return;
+            }
+            setImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        // Check auth
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Please sign in to submit a report");
+            navigate("/auth");
+            return;
+        }
+
+        // Validation
+        if (!formData.item_name || !formData.location || !formData.date || !formData.description) {
+            toast.error("Please fill in all required fields (*)");
+            return;
+        }
+
+        setLoading(true);
+        const submitData = new FormData();
+        submitData.append("type", reportType);
+        submitData.append("item_name", formData.item_name);
+        submitData.append("category", formData.category);
+        submitData.append("location", formData.location);
+        submitData.append("date", formData.date);
+        submitData.append("description", formData.description);
+        submitData.append("identifiers", formData.identifiers);
+        submitData.append("alert_method", formData.alert_method);
+        if (image) {
+            submitData.append("image", image);
+        }
+
+        try {
+            const response = await fetch(`${BASE_URL}/api/reports`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                },
+                body: submitData
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                toast.success(result.message || "Report submitted successfully!");
+                setTimeout(() => {
+                    navigate("/dashboard");
+                }, 2000);
+            } else {
+                throw new Error(result.error || "Failed to submit report");
+            }
+        } catch (error) {
+            toast.error(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="bg-black text-white min-h-screen pt-17 pb-17 px-4">
@@ -57,7 +151,7 @@ export default function ReportItem() {
                 <div className="grid lg:grid-cols-12 gap-12">
 
                     {/* LEFT SIDE: Form */}
-                    <div className="lg:col-span-7 space-y-8">
+                    <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-8">
 
                         <div className="grid md:grid-cols-2 gap-6">
                             {/* Item Name */}
@@ -65,6 +159,9 @@ export default function ReportItem() {
                                 <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">ITEM NAME *</label>
                                 <input
                                     type="text"
+                                    name="item_name"
+                                    value={formData.item_name}
+                                    onChange={handleChange}
                                     placeholder="e.g. Blue leather wallet"
                                     className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-3.5 text-white text-sm outline-none focus:border-[#FF2E7E] focus:bg-white/[0.05] transition"
                                 />
@@ -77,7 +174,7 @@ export default function ReportItem() {
                                     onClick={() => setCategoryOpen(!categoryOpen)}
                                     className={`w-full bg-white/[0.03] border ${categoryOpen ? 'border-[#FF2E7E]' : 'border-white/5'} rounded-xl px-5 py-3.5 text-white text-sm cursor-pointer flex items-center justify-between transition-all`}
                                 >
-                                    <span>{selectedCategory}</span>
+                                    <span>{formData.category}</span>
                                     <svg className={`w-4 h-4 text-[#FF2E7E] transition-transform ${categoryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
                                 </div>
                                 {categoryOpen && (
@@ -85,7 +182,7 @@ export default function ReportItem() {
                                         {categories.map((cat) => (
                                             <div
                                                 key={cat}
-                                                onClick={() => { setSelectedCategory(cat); setCategoryOpen(false); }}
+                                                onClick={() => { setFormData({ ...formData, category: cat }); setCategoryOpen(false); }}
                                                 className="px-5 py-3 text-sm text-gray-400 hover:text-white hover:bg-[#FF2E7E]/10 cursor-pointer transition-colors"
                                             >
                                                 {cat}
@@ -102,6 +199,9 @@ export default function ReportItem() {
                                 <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">LOCATION *</label>
                                 <input
                                     type="text"
+                                    name="location"
+                                    value={formData.location}
+                                    onChange={handleChange}
                                     placeholder="e.g. Shivajinagar Metro, Pune"
                                     className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-3.5 text-white text-sm outline-none focus:border-[#FF2E7E] transition"
                                 />
@@ -112,6 +212,9 @@ export default function ReportItem() {
                                 <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">DATE *</label>
                                 <input
                                     type="date"
+                                    name="date"
+                                    value={formData.date}
+                                    onChange={handleChange}
                                     className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-3.5 text-white text-sm outline-none focus:border-[#FF2E7E] transition appearance-none"
                                 />
                             </div>
@@ -122,6 +225,9 @@ export default function ReportItem() {
                             <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">DESCRIPTION *</label>
                             <textarea
                                 rows="3"
+                                name="description"
+                                value={formData.description}
+                                onChange={handleChange}
                                 placeholder="Describe color, size, brand, unique marks, what's inside (for bags/wallets)..."
                                 className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-3.5 text-white text-sm outline-none focus:border-[#FF2E7E] transition resize-none"
                             />
@@ -132,6 +238,9 @@ export default function ReportItem() {
                             <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">UNIQUE IDENTIFIERS</label>
                             <input
                                 type="text"
+                                name="identifiers"
+                                value={formData.identifiers}
+                                onChange={handleChange}
                                 placeholder="Serial number, engraving, stickers, damage..."
                                 className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-3.5 text-white text-sm outline-none focus:border-[#FF2E7E] transition"
                             />
@@ -140,15 +249,40 @@ export default function ReportItem() {
                         {/* Photo Upload area */}
                         <div>
                             <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">PHOTO</label>
-                            <div className="border-2 border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center bg-white/[0.01] hover:border-[#FF2E7E]/50 hover:bg-white/[0.03] transition-all cursor-pointer group">
-                                <svg className="w-10 h-10 text-gray-500 group-hover:text-[#FF2E7E] mb-3 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <p className="text-sm text-gray-400">
-                                    Drag & drop or <span className="text-[#FF2E7E] font-bold">click to upload</span>
-                                </p>
-                                <p className="text-[10px] text-gray-600 mt-2 uppercase tracking-widest font-bold">JPG, PNG, WEBP — MAX 10MB</p>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleImageChange}
+                                accept="image/*"
+                                className="hidden"
+                            />
+                            <div
+                                onClick={() => fileInputRef.current.click()}
+                                className="border-2 border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center bg-white/[0.01] hover:border-[#FF2E7E]/50 hover:bg-white/[0.03] transition-all cursor-pointer group min-h-[160px]"
+                            >
+                                {imagePreview ? (
+                                    <div className="relative w-full h-full flex items-center justify-center">
+                                        <img src={imagePreview} alt="Preview" className="max-h-40 rounded-lg" />
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setImage(null); setImagePreview(null); }}
+                                            className="absolute -top-4 -right-4 bg-red-500 text-white rounded-full p-1 shadow-lg"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <svg className="w-10 h-10 text-gray-500 group-hover:text-[#FF2E7E] mb-3 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <p className="text-sm text-gray-400">
+                                            Drag & drop or <span className="text-[#FF2E7E] font-bold">click to upload</span>
+                                        </p>
+                                        <p className="text-[10px] text-gray-600 mt-2 uppercase tracking-widest font-bold">JPG, PNG, WEBP — MAX 10MB</p>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -160,8 +294,8 @@ export default function ReportItem() {
                                     <button
                                         key={method}
                                         type="button"
-                                        onClick={() => setAlertMethod(method.toLowerCase())}
-                                        className={`py-3.5 rounded-xl border font-bold text-[10px] tracking-[0.2em] transition-all ${alertMethod === method.toLowerCase() ? 'bg-[#FF2E7E]/10 border-[#FF2E7E] text-[#FF2E7E]' : 'bg-white/[0.02] border-white/5 text-gray-400 hover:border-white/20'}`}
+                                        onClick={() => setFormData({ ...formData, alert_method: method.toLowerCase() })}
+                                        className={`py-3.5 rounded-xl border font-bold text-[10px] tracking-[0.2em] transition-all ${formData.alert_method === method.toLowerCase() ? 'bg-[#FF2E7E]/10 border-[#FF2E7E] text-[#FF2E7E]' : 'bg-white/[0.02] border-white/5 text-gray-400 hover:border-white/20'}`}
                                     >
                                         {method}
                                     </button>
@@ -170,12 +304,16 @@ export default function ReportItem() {
                         </div>
 
                         {/* Submit Button */}
-                        <button className="w-full py-5 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-[0.2em] text-xs rounded-xl shadow-[0_10px_40px_rgba(255,46,126,0.3)] hover:bg-pink-600 hover:scale-[1.01] transition-all duration-300 flex items-center justify-center gap-3">
-                            SUBMIT REPORT & FIND MATCHES
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className={`w-full py-5 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-[0.2em] text-xs rounded-xl shadow-[0_10px_40px_rgba(255,46,126,0.3)] hover:bg-pink-600 hover:scale-[1.01] transition-all duration-300 flex items-center justify-center gap-3 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            {loading ? "SUBMITTING..." : (reportType === "lost" ? "SUBMIT LOST REPORT" : "REPORT FOUND ITEM")}
+                            {!loading && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
                         </button>
 
-                    </div>
+                    </form>
 
                     {/* RIGHT SIDE: Info Boxes */}
                     <div className="lg:col-span-5 space-y-8">
