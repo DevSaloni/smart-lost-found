@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { io } from "../index.js";
 
 // --- MESSAGING CONTROLLERS ---
 
@@ -12,6 +13,15 @@ export const sendMessage = async (req, res) => {
             "INSERT INTO messages (match_id, sender_id, receiver_id, message, file_url) VALUES ($1, $2, $3, $4, $5) RETURNING *",
             [match_id, sender_id, receiver_id, message, file_url]
         );
+
+        // Emit real-time socket event for the message
+        io.to(`user_${receiver_id}`).emit("new_message", {
+            match_id,
+            sender_id,
+            message,
+            sender_name: req.user.name
+        });
+
         res.status(201).json({ success: true, message: result.rows[0] });
     } catch (err) {
         console.error(err);
@@ -75,33 +85,52 @@ export const generateHandoffCode = async (req, res) => {
 
 export const verifyHandoffCode = async (req, res) => {
     const { match_id, code } = req.body;
-    const finder_id = req.user.id;
+    const current_user_id = req.user.id;
+    console.log(`DEBUG - Verifying Handoff: Match=${match_id}, Code=${code}, User=${current_user_id}`);
 
     try {
         const verification = await pool.query(
             "SELECT * FROM handoffs WHERE match_id = $1 AND verification_code = $2 AND status = 'pending'",
-            [match_id, code]
+            [match_id, code.toString().trim()]
         );
 
         if (verification.rows.length === 0) {
-            return res.status(400).json({ error: "Invalid or expired code" });
+            console.log("DEBUG - Verification failed: No pending handoff found for this code/match.");
+            return res.status(400).json({ error: "Invalid or expired code. Please ensure you have the correct 6-digit token from the owner." });
+        }
+
+        const handoff = verification.rows[0];
+
+        // Security check: Only the finder should be verifying the code provided by the owner
+        if (handoff.finder_id !== current_user_id) {
+            console.log(`DEBUG - Role Mismatch: Expected Finder ${handoff.finder_id}, but got ${current_user_id}`);
+            return res.status(403).json({ error: "Unauthorized. Only the person who found the item can verify the handoff token." });
         }
 
         // Update handoff status
         await pool.query(
             "UPDATE handoffs SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = $1",
-            [verification.rows[0].id]
+            [handoff.id]
         );
 
         // Update match status and report status
         await pool.query("UPDATE matches SET status = 'resolved' WHERE id = $1", [match_id]);
         
         // Mark reports as resolved
-        const matchData = verification.rows[0];
         await pool.query("UPDATE reports SET status = 'resolved' WHERE id IN (SELECT lost_report_id FROM matches WHERE id=$1 UNION SELECT found_report_id FROM matches WHERE id=$1)", [match_id]);
 
-        res.status(200).json({ success: true, message: "Handoff verified! Case closed." });
+        // Increase trust scores for both involved users (+10 points)
+        await pool.query("UPDATE users SET trust_score = trust_score + 10 WHERE id IN ($1, $2)", [handoff.owner_id, handoff.finder_id]);
+
+        // Emit real-time socket event to the OWNER to refresh their dashboard
+        io.to(`user_${handoff.owner_id}`).emit("handoff_completed", {
+            match_id: match_id,
+            message: "The finder has successfully verified the handoff! Your item is now marked as returned."
+        });
+
+        res.status(200).json({ success: true, message: "Handoff verified! Trust scores increased (+10)." });
     } catch (err) {
-        res.status(500).json({ error: "Verification failed" });
+        console.error("Handoff verification error:", err);
+        res.status(500).json({ error: "Verification failed due to a server error." });
     }
 };

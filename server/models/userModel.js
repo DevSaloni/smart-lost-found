@@ -8,6 +8,7 @@ const createUserTable = async () => {
             email VARCHAR(255) UNIQUE NOT NULL,
             password VARCHAR(255) NOT NULL,
             is_verified BOOLEAN DEFAULT FALSE,
+            trust_score INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     `;

@@ -1,6 +1,8 @@
 import pool from "../config/db.js";
 import { createMatch } from "../models/matchModel.js";
 import { createNotification } from "../models/notificationModel.js";
+import { io } from "../index.js";
+import { sendExternalNotification } from "./notificationService.js";
 
 /**
  * Simple keyword-based similarity scoring
@@ -21,11 +23,13 @@ export const findMatchesForReport = async (newReport) => {
         const oppositeType = type === 'lost' ? 'found' : 'lost';
         
         const query = `
-            SELECT * FROM reports 
-            WHERE type = $1 
-            AND category = $2 
-            AND id != $3
-            AND status = 'active';
+            SELECT r.*, u.email, u.name as user_name
+            FROM reports r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.type = $1 
+            AND r.category = $2 
+            AND r.id != $3
+            AND r.status = 'active';
         `;
         
         const { rows: candidates } = await pool.query(query, [oppositeType, category, id]);
@@ -49,13 +53,32 @@ export const findMatchesForReport = async (newReport) => {
                     similarity_score: totalSimilarity
                 });
 
-                // Send notification to the other user
+                const notificationMessage = `A potential match for your "${candidate.item_name}" has been found! (${totalSimilarity}% match)`;
+                
+                // Send in-app notification
                 await createNotification({
                     user_id: candidate.user_id,
                     report_id: candidate.id,
                     type: 'match_found',
-                    message: `A potential match for your "${candidate.item_name}" has been found! (${totalSimilarity}% match)`
+                    message: notificationMessage
                 });
+
+                // Emit real-time socket event
+                io.to(`user_${candidate.user_id}`).emit("match_found", {
+                    message: notificationMessage,
+                    report_id: candidate.id,
+                    match_id: match.id,
+                    similarity: totalSimilarity
+                });
+
+                // Send External Notification (EMAIL / SMS)
+                if (candidate.alert_method && candidate.alert_method !== 'push') {
+                    await sendExternalNotification(
+                        { email: candidate.email, name: candidate.user_name }, 
+                        notificationMessage, 
+                        candidate.alert_method
+                    );
+                }
 
                 matches.push(match);
             }
