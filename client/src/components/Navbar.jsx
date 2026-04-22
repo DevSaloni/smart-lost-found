@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const navLinks = [
     { label: "HOME", href: "/" },
@@ -14,16 +15,18 @@ const navLinks = [
 export default function Navbar() {
     const [open, setOpen] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
     const token = localStorage.getItem("token");
 
     const handleLogout = () => {
         localStorage.removeItem("token");
         setOpen(false);
+        toast.success("Logged out successfully");
         navigate("/auth");
     };
 
     return (
-        <nav className="text-white sticky top-1 z-50">
+        <nav className="text-white absolute top-0 w-full z-50">
             <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
                 {/* Logo */}
                 <div className="text-2xl font-extrabold tracking-widest">
@@ -34,7 +37,7 @@ export default function Navbar() {
                 {/* CENTER GLASS NAV */}
                 <div className="hidden md:flex flex-1 justify-center">
                     <div className="flex items-center gap-6 px-6 h-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5)]">
-                        {navLinks.map((link) => (
+                        {navLinks.filter(link => link.label !== "DASHBOARD" || token).map((link) => (
                             <Link
                                 key={link.label}
                                 to={link.href}
@@ -90,7 +93,7 @@ export default function Navbar() {
             {/* MOBILE MENU */}
             {open && (
                 <div className="md:hidden px-4 pb-4 space-y-2 bg-black/95 backdrop-blur-xl border-t border-white/10">
-                    {navLinks.map((link) => (
+                    {navLinks.filter(link => link.label !== "DASHBOARD" || token).map((link) => (
                         <Link
                             key={link.label}
                             to={link.href}

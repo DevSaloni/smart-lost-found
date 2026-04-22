@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import toast from "react-hot-toast";
 import BASE_URL from "../config.js";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const categories = [
     "Wallet / Purse",
@@ -37,6 +37,14 @@ export default function ReportItem() {
         identifiers: "",
         alert_method: "push"
     });
+
+    const location = useLocation();
+
+    React.useEffect(() => {
+        if (location.state?.reportType) {
+            setReportType(location.state.reportType);
+        }
+    }, [location.state]);
 
     const [image, setImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);

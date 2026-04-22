@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { createReportController, getUserReportsController, getReportByIdController } from "../controllers/reportController.js";
+import { createReportController, getUserReportsController, getReportByIdController, getAllReportsController } from "../controllers/reportController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -20,6 +20,9 @@ router.post("/", protect, upload.single("image"), createReportController);
 
 // GET USER REPORTS
 router.get("/my-reports", protect, getUserReportsController);
+
+// GET ALL REPORTS FOR BROWSE
+router.get("/browse", getAllReportsController);
 
 // GET REPORT BY ID
 router.get("/:id", getReportByIdController);

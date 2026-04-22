@@ -11,13 +11,7 @@ import Footer from "../components/Footer"
 const Home = () => {
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            navigate("/dashboard");
-        }
-    }, [navigate]);
-
+    // Removed automatic redirect to /dashboard so users can access Home page
     return (
         <div>
             <HeroSection />

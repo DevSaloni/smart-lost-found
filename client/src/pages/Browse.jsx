@@ -1,71 +1,83 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import BASE_URL from "../config.js";
 
 const quickFilters = ["ALL", "LOST", "FOUND", "WALLET", "PHONE", "KEYS", "BAG", "JEWELLERY", "PET", "DOCUMENTS"];
 
 const sortOptions = ["Latest first", "Oldest first", "Top matches"];
 
-const reports = [
-    {
-        id: 1,
-        status: "FOUND",
-        type: "found",
-        title: "Blue leather wallet",
-        location: "Shivajinagar",
-        date: "Apr 4",
-        icon: "💼",
-    },
-    {
-        id: 2,
-        status: "LOST",
-        type: "lost",
-        title: "Samsung Galaxy S24",
-        location: "FC Road",
-        date: "Apr 3",
-        icon: "📱",
-    },
-    {
-        id: 3,
-        status: "FOUND",
-        type: "found",
-        title: "Honda car keys",
-        location: "Koregaon Park",
-        date: "Apr 2",
-        icon: "🔑",
-    },
-    {
-        id: 4,
-        status: "LOST",
-        type: "lost",
-        title: "Black backpack",
-        location: "Pune Station",
-        date: "Apr 1",
-        icon: "🎒",
-    },
-    {
-        id: 5,
-        status: "LOST",
-        type: "lost",
-        title: "Golden Retriever, Bruno",
-        location: "Baner",
-        date: "Mar 31",
-        icon: "🐕",
-    },
-    {
-        id: 6,
-        status: "MATCHED",
-        type: "matched",
-        title: "Sony WH-1000XM5",
-        location: "Viman Nagar",
-        date: "Mar 28",
-        icon: "🎧",
-    },
-];
+const getCategoryIcon = (category) => {
+    if (!category) return "📦";
+    const cat = category.toLowerCase();
+    if (cat.includes("wallet") || cat.includes("purse")) return "💼";
+    if (cat.includes("phone")) return "📱";
+    if (cat.includes("key")) return "🔑";
+    if (cat.includes("bag") || cat.includes("backpack")) return "🎒";
+    if (cat.includes("pet")) return "🐕";
+    if (cat.includes("jewel") || cat.includes("ring")) return "💍";
+    if (cat.includes("document")) return "📄";
+    return "📦";
+};
 
 export default function Browse() {
+    const [reports, setReports] = useState([]);
+    const [loading, setLoading] = useState(true);
+
     const [activeQuickFilter, setActiveQuickFilter] = useState("ALL");
     const [sortOpen, setSortOpen] = useState(false);
     const [selectedSort, setSelectedSort] = useState(sortOptions[0]);
+
+    // Sidebar filters
+    const [selectedCategory, setSelectedCategory] = useState("All categories");
+    const [selectedDateRange, setSelectedDateRange] = useState("All time");
+    const [selectedStatus, setSelectedStatus] = useState("Active");
+    const [searchQuery, setSearchQuery] = useState("");
+
+    useEffect(() => {
+        const fetchReports = async () => {
+            try {
+                setLoading(true);
+                const queryParams = new URLSearchParams();
+                if (activeQuickFilter !== "ALL") {
+                    if (activeQuickFilter === "LOST" || activeQuickFilter === "FOUND") {
+                        queryParams.append("type", activeQuickFilter);
+                    } else {
+                        queryParams.append("category", activeQuickFilter);
+                    }
+                }
+                if (selectedCategory !== "All categories") {
+                    queryParams.append("category", selectedCategory);
+                }
+
+                // Let the backend handle 'All' gracefully if sent, our backend assumes missing means NO filter, or Active filters based on exact string
+                // we'll send it if not default, but backend needs to handle "Active" anyway.
+                if (selectedStatus && selectedStatus !== 'All statuses') {
+                    queryParams.append("status", selectedStatus);
+                }
+
+                if (searchQuery.trim()) {
+                    queryParams.append("search", searchQuery);
+                }
+                if (selectedDateRange && selectedDateRange !== 'All time') {
+                    queryParams.append("dateRange", selectedDateRange);
+                }
+                if (selectedSort) {
+                    queryParams.append("sort", selectedSort);
+                }
+
+                const res = await fetch(`${BASE_URL}/api/reports/browse?${queryParams.toString()}`);
+                const data = await res.json();
+                if (res.ok) {
+                    setReports(data.reports || []);
+                }
+            } catch (error) {
+                console.error("Failed to fetch reports", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReports();
+    }, [activeQuickFilter, selectedCategory, selectedStatus, selectedSort, searchQuery, selectedDateRange]);
 
     return (
         <div className="bg-black text-white min-h-screen pt-12 pb-17 px-4">
@@ -86,6 +98,8 @@ export default function Browse() {
                             <input
                                 type="text"
                                 placeholder="Search lost or found items..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-3 text-white outline-none focus:border-[#FF2E7E]/50 focus:bg-white/[0.05] transition-all"
                             />
                             <div className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-500">
@@ -121,14 +135,13 @@ export default function Browse() {
                             <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#FF2E7E] uppercase mb-6">CATEGORY</h3>
                             <div className="space-y-4">
                                 {["All categories", "Wallet / Purse", "Phone", "Keys", "Bag / Backpack", "Jewellery"].map((cat, i) => (
-                                    <label key={cat} className="flex items-center justify-between group cursor-pointer">
+                                    <label key={cat} onClick={() => setSelectedCategory(cat)} className="flex items-center justify-between group cursor-pointer">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${i === 0 ? 'bg-[#FF2E7E] border-[#FF2E7E]' : 'border-white/20 group-hover:border-white/40'}`}>
-                                                {i === 0 && <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>}
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedCategory === cat ? 'bg-[#FF2E7E] border-[#FF2E7E]' : 'border-white/20 group-hover:border-white/40'}`}>
+                                                {selectedCategory === cat && <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>}
                                             </div>
-                                            <span className={`text-sm transition-colors ${i === 0 ? 'text-white font-medium' : 'text-gray-500 group-hover:text-gray-300'}`}>{cat}</span>
+                                            <span className={`text-sm transition-colors ${selectedCategory === cat ? 'text-white font-medium' : 'text-gray-500 group-hover:text-gray-300'}`}>{cat}</span>
                                         </div>
-                                        <span className="text-[10px] text-gray-600 font-bold">{[115, 34, 28, 19, 15, 11][i]}</span>
                                     </label>
                                 ))}
                             </div>
@@ -139,11 +152,11 @@ export default function Browse() {
                             <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#FF2E7E] uppercase mb-6">DATE RANGE</h3>
                             <div className="space-y-4">
                                 {["All time", "Today", "This week", "This month"].map((time, i) => (
-                                    <label key={time} className="flex items-center gap-3 group cursor-pointer">
-                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${i === 0 ? 'bg-pink-500/20 border-[#FF2E7E]' : 'border-white/20 group-hover:border-white/40'}`}>
-                                            {i === 0 && <div className="w-1.5 h-1.5 bg-[#FF2E7E] rounded-sm" />}
+                                    <label key={time} onClick={() => setSelectedDateRange(time)} className="flex items-center gap-3 group cursor-pointer">
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedDateRange === time ? 'bg-pink-500/20 border-[#FF2E7E]' : 'border-white/20 group-hover:border-white/40'}`}>
+                                            {selectedDateRange === time && <div className="w-1.5 h-1.5 bg-[#FF2E7E] rounded-sm" />}
                                         </div>
-                                        <span className={`text-sm transition-colors ${i === 0 ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`}>{time}</span>
+                                        <span className={`text-sm transition-colors ${selectedDateRange === time ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`}>{time}</span>
                                     </label>
                                 ))}
                             </div>
@@ -153,12 +166,12 @@ export default function Browse() {
                         <div className="bg-[#0c0c0c] border border-white/5 rounded-3xl p-8">
                             <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#FF2E7E] uppercase mb-6">STATUS</h3>
                             <div className="space-y-4">
-                                {["Active", "Matched", "Returned"].map((status, i) => (
-                                    <label key={status} className="flex items-center gap-3 group cursor-pointer">
-                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${i === 0 ? 'bg-[#FF2E7E] border-[#FF2E7E]' : 'border-white/20 group-hover:border-white/40'}`}>
-                                            {i === 0 && <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>}
+                                {["All statuses", "Active", "Resolved"].map((status, i) => (
+                                    <label key={status} onClick={() => setSelectedStatus(status)} className="flex items-center gap-3 group cursor-pointer">
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedStatus === status ? 'bg-[#FF2E7E] border-[#FF2E7E]' : 'border-white/20 group-hover:border-white/40'}`}>
+                                            {selectedStatus === status && <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>}
                                         </div>
-                                        <span className={`text-sm transition-colors ${i === 0 ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`}>{status}</span>
+                                        <span className={`text-sm transition-colors ${selectedStatus === status ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`}>{status}</span>
                                     </label>
                                 ))}
                             </div>
@@ -169,7 +182,7 @@ export default function Browse() {
                     {/* RESULTS GRID */}
                     <div className="lg:col-span-9">
                         <div className="flex items-center justify-between mb-8 px-2">
-                            <p className="text-gray-500 text-sm font-medium">115 reports found</p>
+                            <p className="text-gray-500 text-sm font-medium">{reports.length} reports found</p>
 
                             {/* THEMED CUSTOM DROPDOWN */}
                             <div className="flex items-center gap-4 relative">
@@ -199,12 +212,16 @@ export default function Browse() {
                         </div>
 
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {reports.map((report) => (
+                            {loading ? (
+                                <div className="col-span-full py-20 text-center text-gray-500">Scanning frequency records...</div>
+                            ) : reports.length === 0 ? (
+                                <div className="col-span-full py-20 text-center text-gray-500">No reports found matching your criteria.</div>
+                            ) : reports.map((report) => (
                                 <Link
                                     key={report.id}
                                     to={`/item/${report.id}`}
                                     state={{ context: 'browse' }}
-                                    className="group bg-[#0c0c0c] border border-white/10 rounded-[32px] p-6 hover:border-[#FF2E7E]/30 transition-all duration-500 cursor-pointer flex flex-col relative overflow-hidden"
+                                    className="group bg-[#0c0c0c] border border-white/10 rounded-[32px] p-5 hover:border-[#FF2E7E]/30 transition-all duration-500 cursor-pointer flex flex-col relative overflow-hidden"
                                 >
                                     {/* Action Button on Hover */}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-center pb-8 z-10">
@@ -214,27 +231,30 @@ export default function Browse() {
                                     </div>
 
                                     {/* Tag */}
-                                    <div className="flex mb-6 text-left">
-                                        <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase ${report.type === 'found' ? 'bg-green-500/10 text-green-500' :
-                                            report.type === 'lost' ? 'bg-orange-500/10 text-orange-500' :
-                                                'bg-blue-500/10 text-blue-500'
-                                            }`}>
-                                            {report.status}
+                                    <div className="flex mb-4 text-left">
+                                        <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase ${report.status === 'active' ? (report.type === 'found' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500') : 'bg-blue-500/10 text-blue-500'}`}>
+                                            {report.status === 'returned' || report.status === 'resolved' ? 'RESOLVED' : report.status}
                                         </span>
                                     </div>
 
-                                    {/* Icon Placeholder */}
-                                    <div className="flex-1 flex items-center justify-center py-8 group-hover:scale-110 transition-transform duration-500">
-                                        <span className="text-6xl drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{report.icon}</span>
+                                    {/* Icon Placeholder or Image */}
+                                    <div className="flex-1 flex items-center justify-center py-4 group-hover:scale-110 transition-transform duration-500">
+                                        {report.image_url ? (
+                                            <div className="w-full h-32 rounded-[20px] overflow-hidden border border-white/10 shadow-2xl">
+                                                <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" alt={report.item_name} />
+                                            </div>
+                                        ) : (
+                                            <span className="text-6xl drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{getCategoryIcon(report.category)}</span>
+                                        )}
                                     </div>
 
                                     {/* Text Content */}
-                                    <div className="mt-6 pt-6 border-t border-white/5 text-left">
-                                        <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#FF2E7E] transition-colors">{report.title}</h3>
+                                    <div className="mt-4 pt-4 border-t border-white/5 text-left">
+                                        <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#FF2E7E] transition-colors">{report.item_name}</h3>
                                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium tracking-tight">
-                                            <span>{report.location}</span>
-                                            <span className="w-1.5 h-1.5 bg-white/10 rounded-full" />
-                                            <span>{report.date}</span>
+                                            <span className="truncate max-w-[60%]">{report.location}</span>
+                                            <span className="w-1.5 h-1.5 bg-white/10 rounded-full flex-shrink-0" />
+                                            <span className="flex-shrink-0 whitespace-nowrap">{new Date(report.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                                         </div>
                                     </div>
                                 </Link>

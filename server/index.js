@@ -12,6 +12,8 @@ import { createReportTable } from "./models/reportModel.js";
 import { createNotificationTable } from "./models/notificationModel.js";
 import { createMatchTable } from "./models/matchModel.js";
 import { createMessageTable, createHandoffTable } from "./models/interactionModel.js";
+import { createContactTable } from "./models/contactModel.js";
+import contactRoutes from "./routes/contactRoute.js";
 
 // Initialize tables
 createUserTable();
@@ -20,6 +22,7 @@ createNotificationTable();
 createMatchTable();
 createMessageTable();
 createHandoffTable();
+createContactTable();
 
 dotenv.config();
 
@@ -35,6 +38,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/matches", matchRoutes);
 app.use("/api/interactions", interactionRoutes);
+app.use("/api/contact", contactRoutes);
 
 //test route
 app.get("/", async (req, res) => {

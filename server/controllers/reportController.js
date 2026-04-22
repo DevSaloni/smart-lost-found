@@ -1,4 +1,4 @@
-import { createReport, getUserReports, getReportById } from "../models/reportModel.js";
+import { createReport, getUserReports, getReportById, getAllReportsForBrowse } from "../models/reportModel.js";
 import { findMatchesForReport } from "../services/matchService.js";
 
 export const createReportController = async (req, res) => {
@@ -13,7 +13,6 @@ export const createReportController = async (req, res) => {
             identifiers,
             status,
             alert_method,
-
         } = req.body;
 
         const image = req.file ? req.file.filename : null;
@@ -56,6 +55,17 @@ export const createReportController = async (req, res) => {
     }
 }
 
+export const getAllReportsController = async (req, res) => {
+    try {
+        const { type, category, status, search, sort, dateRange } = req.query;
+        const reports = await getAllReportsForBrowse({ type, category, status, search, sort, dateRange });
+        res.status(200).json({ success: true, reports });
+    } catch (error) {
+        console.error("Error fetching reports for browse:", error);
+        res.status(500).json({ error: "Server error" });
+    }
+};
+
 export const getUserReportsController = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -79,4 +89,4 @@ export const getReportByIdController = async (req, res) => {
         console.error("Error fetching report details:", error);
         res.status(500).json({ error: "Server error" });
     }
-};
+};

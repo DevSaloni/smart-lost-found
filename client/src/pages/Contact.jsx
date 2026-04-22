@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { toast } from "react-hot-toast";
+import BASE_URL from "../config.js";
 
 const socialLinks = [
     {
@@ -38,14 +40,57 @@ const topics = [
 export default function Contact() {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedTopic, setSelectedTopic] = useState(topics[0]);
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [message, setMessage] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!name || !email || !message) {
+            toast.error("Please fill in all fields.");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const res = await fetch(`${BASE_URL}/api/contact`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name,
+                    email,
+                    topic: selectedTopic,
+                    message,
+                }),
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                toast.success(data.message || "Message sent successfully!");
+                setName("");
+                setEmail("");
+                setMessage("");
+                setSelectedTopic(topics[0]);
+            } else {
+                toast.error(data.error || "Failed to send message.");
+            }
+        } catch (error) {
+            toast.error("An error occurred. Please try again later.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="bg-black text-white min-h-screen flex flex-col items-center justify-start px-4 relative pt-17 pb-17 overflow-hidden">
             {/* Background Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#FF2E7E] opacity-[0.05] blur-[120px] rounded-full" />
-            
+
             <div className="max-w-6xl w-full grid lg:grid-cols-2 gap-16 lg:gap-24 relative z-10 pt-3">
-                
+
                 {/* LEFT SIDE: Info */}
                 <div className="flex flex-col justify-start">
                     <span className="text-[#FF2E7E] font-bold tracking-[0.2em] text-[10px] uppercase block mb-6">
@@ -55,10 +100,10 @@ export default function Contact() {
                         TALK TO THE <br /> FINDIT TEAM
                     </h1>
                     <p className="text-gray-400 text-[16px] leading-relaxed mb-12 max-w-md">
-                        Whether it's a question, a bug, a safety concern, or genuine feedback — we're listening. 
+                        Whether it's a question, a bug, a safety concern, or genuine feedback — we're listening.
                         We're a small team that genuinely cares about this product and its community.
                     </p>
-                    
+
                     {/* Horizontal Social Icons */}
                     <div className="flex gap-4">
                         {socialLinks.map((link, idx) => (
@@ -73,42 +118,46 @@ export default function Contact() {
                 <div className="bg-[#0c0c0c] border border-white/10 rounded-[32px] p-8 md:p-12 shadow-2xl relative">
                     {/* Glow inside card */}
                     <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-[#FF2E7E] opacity-[0.03] blur-[80px] pointer-events-none" />
-                    
+
                     <span className="text-[#FF2E7E] font-bold tracking-[0.2em] text-[10px] uppercase block mb-10">
                         SEND A MESSAGE
                     </span>
-                    
-                    <form className="space-y-6">
+
+                    <form className="space-y-6" onSubmit={handleSubmit}>
                         <div className="grid md:grid-cols-2 gap-6">
                             <div>
                                 <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2">Name</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="Your name"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
                                     className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-4 text-white text-sm outline-none focus:border-[#FF2E7E] focus:bg-white/[0.05] transition"
                                 />
                             </div>
                             <div>
                                 <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2">Email</label>
-                                <input 
-                                    type="email" 
+                                <input
+                                    type="email"
                                     placeholder="you@example.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                     className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-4 text-white text-sm outline-none focus:border-[#FF2E7E] focus:bg-white/[0.05] transition"
                                 />
                             </div>
                         </div>
-                        
+
                         {/* CUSTOM DROPDOWN */}
                         <div className="relative">
                             <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2">Topic</label>
-                            
-                            <div 
+
+                            <div
                                 onClick={() => setIsOpen(!isOpen)}
                                 className={`w-full bg-white/[0.03] border ${isOpen ? 'border-[#FF2E7E]' : 'border-white/5'} rounded-xl px-5 py-4 text-white text-sm cursor-pointer flex items-center justify-between group transition-all duration-300`}
                             >
                                 <span className={selectedTopic ? 'text-white' : 'text-gray-500'}>{selectedTopic}</span>
-                                <svg 
-                                    className={`w-4 h-4 text-[#FF2E7E] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} 
+                                <svg
+                                    className={`w-4 h-4 text-[#FF2E7E] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
                                     fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                 >
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
@@ -118,7 +167,7 @@ export default function Contact() {
                             {isOpen && (
                                 <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[#111] border border-white/10 rounded-xl overflow-hidden z-50 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200">
                                     {topics.map((topic) => (
-                                        <div 
+                                        <div
                                             key={topic}
                                             onClick={() => {
                                                 setSelectedTopic(topic);
@@ -132,21 +181,25 @@ export default function Contact() {
                                 </div>
                             )}
                         </div>
-                        
+
                         <div>
                             <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2">Message</label>
-                            <textarea 
+                            <textarea
                                 rows="5"
                                 placeholder="Write your message here..."
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
                                 className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-4 text-white text-sm outline-none focus:border-[#FF2E7E] focus:bg-white/[0.05] transition resize-none"
                             />
                         </div>
-                        
-                        <button className="w-full py-5 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-widest text-xs rounded-xl shadow-[0_10px_30px_rgba(255,46,126,0.2)] hover:bg-pink-600 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3 group">
-                            SEND MESSAGE
-                            <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
+
+                        <button disabled={loading} type="submit" className={`w-full py-5 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-widest text-xs rounded-xl shadow-[0_10px_30px_rgba(255,46,126,0.2)] hover:bg-pink-600 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3 group ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {loading ? "SENDING..." : "SEND MESSAGE"}
+                            {!loading && (
+                                <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            )}
                         </button>
                     </form>
                 </div>

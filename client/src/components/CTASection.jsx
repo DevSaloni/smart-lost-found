@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function CTASection() {
   return (
@@ -15,13 +16,13 @@ export default function CTASection() {
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="px-8 py-3 rounded-md bg-[#FF2E7E] text-white font-bold text-base shadow-lg hover:bg-pink-600 transition-colors duration-200">
+          <Link to="/report-item" state={{ reportType: "lost" }} className="px-8 py-3 rounded-md bg-[#FF2E7E] text-white font-bold text-base shadow-lg hover:bg-pink-600 transition-colors duration-200">
             REPORT LOST ITEM
-          </button>
+          </Link>
 
-          <button className="px-8 py-3 rounded-md bg-black border-2 border-[#FF2E7E] text-white font-bold text-base shadow hover:bg-[#FF2E7E]/10 transition-colors duration-200">
+          <Link to="/browse" className="px-8 py-3 rounded-md bg-black border-2 border-[#FF2E7E] text-white font-bold text-base shadow hover:bg-[#FF2E7E]/10 transition-colors duration-200">
             BROWSE FOUND ITEMS
-          </button>
+          </Link>
         </div>
       </div>
     </section>

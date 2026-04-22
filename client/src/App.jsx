@@ -12,10 +12,8 @@ import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
 import ReportItem from './pages/ReportItem';
 import Browse from './pages/Browse';
-import ItemDetails from './pages/ItemDetails';
 import MatchDetails from './pages/MatchDetails';
-
-
+import ItemDetails from './pages/ItemDetails';
 import Dashboard from './pages/Dashboard';
 
 function App() {
@@ -35,8 +33,8 @@ function App() {
                         <Route path="/contact" element={<Contact />} />
                         <Route path="/report-item" element={<ReportItem />} />
                         <Route path="/browse" element={<Browse />} />
-                        <Route path="/item/:id" element={<ItemDetails />} />
                         <Route path="/match-details/:matchId" element={<MatchDetails />} />
+                        <Route path="/item/:id" element={<ItemDetails />} />
                     </Routes>
                 </main>
             </div>

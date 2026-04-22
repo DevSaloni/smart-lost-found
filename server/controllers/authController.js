@@ -20,13 +20,10 @@ export const signup = async (req, res) => {
         const hashPassword = await bcrypt.hash(password, 10);
 
         const user = await pool.query(
-            "INSERT INTO users(name,email,password) VALUES($1,$2,$3) RETURNING *",
-            [name, email, hashPassword]
+            "INSERT INTO users(name,email,password,is_verified) VALUES($1,$2,$3,$4) RETURNING *",
+            [name, email, hashPassword, true]
         );
-        const token = jwt.sign({ id: user.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-        await sendVerificationEmail(email, token);
-        res.json({ message: "Signup successful! Please check your email to verify your account." });
+        res.json({ message: "Signup successful! You can now log in." });
     } catch (err) {
         console.error("Signup error:", err.message);
         res.status(500).json({ error: err.message || "An error occurred during signup." });
@@ -52,7 +49,19 @@ export const verifyEmail = async (req, res) => {
     }
 }
 
-//login 
+import fs from "fs";
+import path from "path";
+
+const logError = (msg) => {
+    const logPath = path.join(process.cwd(), "scratch", "auth_errors.log");
+    const timestamp = new Date().toISOString();
+    try {
+        fs.appendFileSync(logPath, `[${timestamp}] ${msg}\n`);
+    } catch (e) {
+        console.error("Failed to write to log file:", e);
+    }
+};
+
 export const login = async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -60,16 +69,22 @@ export const login = async (req, res) => {
             "SELECT * FROM users WHERE email=$1",
             [email]
         );
-        if (user.rows.length === 0)
+        if (user.rows.length === 0) {
+            logError(`Login failed: User not found - ${email}`);
             return res.status(401).json({ message: "user not found" });
+        }
 
         const valid = await bcrypt.compare(password, user.rows[0].password);
 
-        if (!valid)
+        if (!valid) {
+            logError(`Login failed: Wrong password for ${email}`);
             return res.status(400).json({ message: "Wrong password" });
+        }
 
-        if (!user.rows[0].is_verified)
+        if (!user.rows[0].is_verified) {
+            logError(`Login failed: Email not verified for ${email}`);
             return res.status(400).json({ message: "Verify email first" });
+        }
 
         const token = jwt.sign(
             { id: user.rows[0].id },
@@ -78,12 +93,11 @@ export const login = async (req, res) => {
 
         res.json({ token });
 
-
     } catch (err) {
+        logError(`Login Exception: ${err.message}`);
         res.status(500).json({ error: err.message });
-
     }
-}
+};
 
 export const getProfile = async (req, res) => {
     try {
@@ -95,24 +109,28 @@ export const getProfile = async (req, res) => {
 };
 
 export const googleLogin = async (req, res) => {
-    const { token } = req.body;
+    const { token, email, name, googleId, isAccessToken } = req.body;
     try {
-        const ticket = await client.verifyIdToken({
-            idToken: token,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const { name, email, sub } = ticket.getPayload();
+        let userData = {};
 
-        let user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        if (isAccessToken) {
+            userData = { email, name, sub: googleId };
+        } else {
+            const ticket = await client.verifyIdToken({
+                idToken: token,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            const payload = ticket.getPayload();
+            userData = { email: payload.email, name: payload.name, sub: payload.sub };
+        }
+
+        let user = await pool.query("SELECT * FROM users WHERE email = $1", [userData.email]);
 
         if (user.rows.length === 0) {
-            // Create user for Google login
-            // Password can be a random string or null if allowed by schema (ours has NOT NULL)
-            // We'll use the google ID (sub) hashed as a placeholder
-            const placeholderPassword = await bcrypt.hash(sub, 10);
+            const placeholderPassword = await bcrypt.hash(userData.sub, 10);
             user = await pool.query(
                 "INSERT INTO users(name, email, password, is_verified) VALUES($1, $2, $3, $4) RETURNING *",
-                [name, email, placeholderPassword, true] // Google accounts are pre-verified
+                [userData.name, userData.email, placeholderPassword, true]
             );
         }
 

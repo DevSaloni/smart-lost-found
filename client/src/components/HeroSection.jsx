@@ -1,10 +1,20 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import heroImg from "../assets/hero-bg.png";
 
 export default function HeroSection() {
   return (
-    <section className="bg-black min-h-[85vh] flex flex-col items-center justify-center text-center px-4 relative overflow-hidden">
+    <section className="h-screen flex flex-col items-center justify-center text-center px-4 relative overflow-hidden bg-black">
 
+      {/* Background Image Container */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src={heroImg}
+          className="w-full h-full object-cover opacity-90"
+          alt="Lost and Found Background"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black"></div>
+      </div>
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-6 py-10 max-w-4xl">
@@ -35,13 +45,13 @@ shadow-[0_0_15px_rgba(255,255,255,0.1)]">
         <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
 
           {/* PRIMARY CTA */}
-          <Link to="/report-item" className="px-10 py-3 rounded-full bg-[#FF2E7E] text-white font-bold text-sm tracking-wide
+          <Link to="/report-item" state={{ reportType: "lost" }} className="px-10 py-3 rounded-full bg-[#FF2E7E] text-white font-bold text-sm tracking-wide
          hover:bg-pink-600 transition duration-300 flex items-center justify-center">
             I LOST SOMETHING
           </Link>
 
           {/* SECONDARY */}
-          <Link to="/report-item" className="px-10 py-3 rounded-full border border-white/20 text-white text-sm font-semibold tracking-wide
+          <Link to="/report-item" state={{ reportType: "found" }} className="px-10 py-3 rounded-full border border-white/20 text-white text-sm font-semibold tracking-wide
           backdrop-blur-md bg-white/5 hover:border-[#FF2E7E] hover:text-[#FF2E7E] transition duration-300 flex items-center justify-center">
             I FOUND SOMETHING
           </Link>
