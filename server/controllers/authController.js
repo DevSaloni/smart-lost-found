@@ -8,7 +8,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 
 export const signup = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, phone, password } = req.body;
 
     try {
         // Check if user already exists
@@ -20,8 +20,8 @@ export const signup = async (req, res) => {
         const hashPassword = await bcrypt.hash(password, 10);
 
         const user = await pool.query(
-            "INSERT INTO users(name,email,password,is_verified) VALUES($1,$2,$3,$4) RETURNING *",
-            [name, email, hashPassword, true]
+            "INSERT INTO users(name,email,phone,password,is_verified) VALUES($1,$2,$3,$4,$5) RETURNING *",
+            [name, email, phone, hashPassword, true]
         );
         res.json({ message: "Signup successful! You can now log in." });
     } catch (err) {

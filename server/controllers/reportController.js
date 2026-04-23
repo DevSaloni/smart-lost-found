@@ -15,14 +15,17 @@ export const createReportController = async (req, res) => {
             alert_method,
         } = req.body;
 
+        const trimmedItemName = item_name ? item_name.trim() : "";
+        const trimmedLocation = location ? location.trim() : "";
+
         const image = req.file ? req.file.filename : null;
 
         const report = await createReport({
             user_id: req.user.id, // from auth middleware
             type,
-            item_name,
+            item_name: trimmedItemName,
             category,
-            location,
+            location: trimmedLocation,
             date,
             description,
             identifiers,

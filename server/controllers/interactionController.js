@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import { io } from "../index.js";
+import { sendExternalNotification } from "../services/notificationService.js";
 
 // --- MESSAGING CONTROLLERS ---
 
@@ -75,7 +76,31 @@ export const generateHandoffCode = async (req, res) => {
             "INSERT INTO handoffs (match_id, owner_id, finder_id, verification_code) VALUES ($1, $2, $3, $4) RETURNING *",
             [match_id, owner_id, finder_id, code]
         );
-        
+
+        // Notify owner via SMS/Email if they have it enabled for the related report
+        try {
+            const owner = await pool.query("SELECT email, phone, name FROM users WHERE id = $1", [owner_id]);
+            const report = await pool.query(`
+                SELECT alert_method 
+                FROM reports r 
+                JOIN matches m ON (r.id = m.lost_report_id) 
+                WHERE m.id = $1 AND r.user_id = $2
+            `, [match_id, owner_id]);
+
+            if (owner.rows.length > 0 && report.rows.length > 0) {
+                const method = report.rows[0].alert_method ? report.rows[0].alert_method.toLowerCase() : '';
+                if (method === 'sms') {
+                    await sendExternalNotification(
+                        owner.rows[0],
+                        `[FindIt] Security Alert: Your recovery handoff token is ${code}. Share this ONLY with the finder when you receive your item.`,
+                        'sms'
+                    );
+                }
+            }
+        } catch (notifyErr) {
+            console.error("Handoff notification failed:", notifyErr.message);
+        }
+
         res.status(201).json({ success: true, code: result.rows[0].verification_code });
     } catch (err) {
         console.error(err);
@@ -115,7 +140,7 @@ export const verifyHandoffCode = async (req, res) => {
 
         // Update match status and report status
         await pool.query("UPDATE matches SET status = 'resolved' WHERE id = $1", [match_id]);
-        
+
         // Mark reports as resolved
         await pool.query("UPDATE reports SET status = 'resolved' WHERE id IN (SELECT lost_report_id FROM matches WHERE id=$1 UNION SELECT found_report_id FROM matches WHERE id=$1)", [match_id]);
 

@@ -23,7 +23,7 @@ export const findMatchesForReport = async (newReport) => {
         const oppositeType = type === 'lost' ? 'found' : 'lost';
         
         const query = `
-            SELECT r.*, u.email, u.name as user_name
+            SELECT r.*, u.email, u.phone, u.name as user_name
             FROM reports r
             JOIN users u ON r.user_id = u.id
             WHERE r.type = $1 
@@ -53,7 +53,7 @@ export const findMatchesForReport = async (newReport) => {
                     similarity_score: totalSimilarity
                 });
 
-                const notificationMessage = `A potential match for your "${candidate.item_name}" has been found! (${totalSimilarity}% match)`;
+                const notificationMessage = `[FindIt] Match Alert: We found a potential match for your "${candidate.item_name}" (${totalSimilarity}% confidence). Check your dashboard for details.`;
                 
                 // Send in-app notification
                 await createNotification({
@@ -72,9 +72,10 @@ export const findMatchesForReport = async (newReport) => {
                 });
 
                 // Send External Notification (EMAIL / SMS)
-                if (candidate.alert_method && candidate.alert_method !== 'push') {
+                const method = candidate.alert_method ? candidate.alert_method.toLowerCase() : 'push';
+                if (method !== 'push') {
                     await sendExternalNotification(
-                        { email: candidate.email, name: candidate.user_name }, 
+                        { email: candidate.email, phone: candidate.phone, name: candidate.user_name }, 
                         notificationMessage, 
                         candidate.alert_method
                     );
