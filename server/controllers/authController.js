@@ -135,9 +135,39 @@ export const googleLogin = async (req, res) => {
         }
 
         const jwtToken = jwt.sign({ id: user.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token: jwtToken });
+        
+        // Check if phone is missing
+        const requiresPhone = !user.rows[0].phone;
+
+        res.json({ 
+            token: jwtToken, 
+            user: {
+                id: user.rows[0].id,
+                name: user.rows[0].name,
+                email: user.rows[0].email,
+                phone: user.rows[0].phone
+            },
+            requiresPhone 
+        });
     } catch (err) {
         console.error("Google Login Error:", err);
         res.status(400).json({ error: "Google authentication failed" });
     }
-}
+};
+
+export const updatePhone = async (req, res) => {
+    const { phone } = req.body;
+    const userId = req.user.id;
+
+    if (!phone) {
+        return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    try {
+        await pool.query("UPDATE users SET phone = $1 WHERE id = $2", [phone, userId]);
+        res.json({ message: "Phone number updated successfully" });
+    } catch (err) {
+        console.error("Update Phone Error:", err);
+        res.status(500).json({ error: "Failed to update phone number" });
+    }
+};

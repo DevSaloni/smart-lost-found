@@ -1,4 +1,4 @@
-import { createReport, getUserReports, getReportById, getAllReportsForBrowse } from "../models/reportModel.js";
+import { createReport, getUserReports, getReportById, getAllReportsForBrowse, updateReport } from "../models/reportModel.js";
 import { findMatchesForReport } from "../services/matchService.js";
 
 export const createReportController = async (req, res) => {
@@ -91,5 +91,54 @@ export const getReportByIdController = async (req, res) => {
     } catch (error) {
         console.error("Error fetching report details:", error);
         res.status(500).json({ error: "Server error" });
+    }
+};
+
+export const updateReportController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            type,
+            item_name,
+            category,
+            location,
+            date,
+            description,
+            identifiers,
+            alert_method,
+        } = req.body;
+
+        const trimmedItemName = item_name ? item_name.trim() : "";
+        const trimmedLocation = location ? location.trim() : "";
+
+        const image = req.file ? req.file.filename : null;
+
+        const reportData = {
+            type,
+            item_name: trimmedItemName,
+            category,
+            location: trimmedLocation,
+            date,
+            description,
+            identifiers,
+            alert_method,
+            image_url: image
+        };
+
+        const updatedReport = await updateReport(id, req.user.id, reportData);
+
+        if (!updatedReport) {
+            return res.status(404).json({ error: "Report not found or you are not authorized to edit it" });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Report updated successfully",
+            report: updatedReport
+        });
+
+    } catch (error) {
+        console.error("Error updating report:", error);
+        res.status(500).json({ error: error.message || "Server error" });
     }
 };

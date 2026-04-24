@@ -114,3 +114,36 @@ export const getAllReportsForBrowse = async (filters) => {
     const result = await pool.query(query, values);
     return result.rows;
 };
+
+export const updateReport = async (id, userId, reportData) => {
+    const {
+        type,
+        item_name,
+        category,
+        location,
+        date,
+        description,
+        identifiers,
+        image_url,
+        alert_method
+    } = reportData;
+
+    let query = `
+        UPDATE reports 
+        SET type = $1, item_name = $2, category = $3, location = $4, date = $5, description = $6, identifiers = $7, alert_method = $8
+    `;
+    const values = [type, item_name, category, location, date, description, identifiers, alert_method];
+    let paramCount = 9;
+
+    if (image_url !== undefined && image_url !== null) {
+        query += `, image_url = $${paramCount}`;
+        values.push(image_url);
+        paramCount++;
+    }
+
+    query += ` WHERE id = $${paramCount} AND user_id = $${paramCount + 1} RETURNING *;`;
+    values.push(id, userId);
+
+    const result = await pool.query(query, values);
+    return result.rows[0];
+};
