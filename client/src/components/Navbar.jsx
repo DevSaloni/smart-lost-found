@@ -31,10 +31,12 @@ export default function Navbar() {
     return (
         <nav className="text-white absolute top-0 w-full z-50">
             <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
-                {/* Logo */}
-                <div className="text-2xl font-extrabold tracking-widest cursor-pointer" onClick={() => navigate("/")}>
-                    <span className="text-[#FF2E7E]">FIND</span>
-                    <span className="text-white">IT</span>
+                {/* Professional Text-Only Logo */}
+                <div className="flex flex-col cursor-pointer select-none group" onClick={() => navigate("/")}>
+                    <div className="logo-text text-3xl">
+                        <span className="find">FIND</span>
+                        <span className="it">IT.</span>
+                    </div>
                 </div>
 
                 {/* CENTER GLASS NAV */}
@@ -57,8 +59,8 @@ export default function Navbar() {
                 <div className="hidden md:flex items-center gap-6">
                     {token && (
                         <div className="relative">
-                            <button 
-                                onClick={() => { setNotifOpen(!notifOpen); if(!notifOpen) markAsRead(); }}
+                            <button
+                                onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) markAsRead(); }}
                                 className="relative group p-2 hover:bg-white/5 rounded-full transition"
                             >
                                 <svg className={`w-6 h-6 transition ${unreadCount > 0 ? 'text-[#FF2E7E]' : 'text-gray-400 group-hover:text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,8 +90,8 @@ export default function Navbar() {
                                             </div>
                                         ) : (
                                             notifications.map(notif => (
-                                                <div 
-                                                    key={notif.id} 
+                                                <div
+                                                    key={notif.id}
                                                     onClick={() => {
                                                         setNotifOpen(false);
                                                         const targetTab = notif.type === 'message' ? 'chat' : 'matches';
@@ -110,8 +112,8 @@ export default function Navbar() {
                                         )}
                                     </div>
                                     <div className="p-4 bg-white/5 text-center border-t border-white/10">
-                                        <button 
-                                            onClick={() => { navigate("/dashboard"); setNotifOpen(false); }} 
+                                        <button
+                                            onClick={() => { navigate("/dashboard"); setNotifOpen(false); }}
                                             className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-[#FF2E7E] transition-all duration-300"
                                         >
                                             View Recovery Center
@@ -125,14 +127,14 @@ export default function Navbar() {
                     {token ? (
                         <button
                             onClick={handleLogout}
-                            className="h-8 px-4 border border-white/20 text-gray-300 text-[11px] font-bold tracking-widest uppercase hover:border-[#FF2E7E] hover:text-[#FF2E7E] transition duration-300 flex items-center rounded-lg"
+                            className="h-8 px-4 border border-white/20 text-gray-300 text-[11px] font-bold tracking-widest uppercase hover:border-[#FF2E7E] hover:text-[#FF2E7E] transition duration-300 flex items-center rounded-none"
                         >
                             LOGOUT
                         </button>
                     ) : (
                         <Link
                             to="/auth"
-                            className="h-8 px-4 border border-white/20 text-gray-300 text-[11px] font-bold tracking-widest uppercase hover:border-[#FF2E7E] hover:text-[#FF2E7E] transition duration-300 flex items-center rounded-lg"
+                            className="h-8 px-4 border border-white/20 text-gray-300 text-[11px] font-bold tracking-widest uppercase hover:border-[#FF2E7E] hover:text-[#FF2E7E] transition duration-300 flex items-center rounded-none"
                         >
                             SIGN IN
                         </Link>
@@ -140,7 +142,7 @@ export default function Navbar() {
 
                     <Link
                         to="/report-item"
-                        className="h-8 px-3 bg-[#FF2E7E] text-black text-xs font-bold tracking-widest uppercase hover:bg-pink-600 transition duration-300 flex items-center gap-2"
+                        className="h-8 px-3 bg-[#FF2E7E] text-black text-xs font-bold tracking-widest uppercase hover:bg-pink-600 transition duration-300 flex items-center gap-2 rounded-none"
                     >
                         REPORT ITEM
                     </Link>
@@ -162,7 +164,12 @@ export default function Navbar() {
 
             {/* MOBILE MENU */}
             {open && (
-                <div className="md:hidden px-4 pb-4 space-y-2 bg-black/95 backdrop-blur-xl border-t border-white/10">
+                <div className="md:hidden px-4 pt-8 pb-4 space-y-4 bg-black/95 backdrop-blur-xl border-t border-white/10">
+                    {/* Mobile Logo: Professional Text version */}
+                    <div className="logo-text text-3xl mb-8 select-none" onClick={() => { navigate("/"); setOpen(false); }}>
+                        <span className="find">FIND</span>
+                        <span className="it">IT.</span>
+                    </div>
                     {navLinks.filter(link => link.label !== "DASHBOARD" || token).map((link) => (
                         <Link
                             key={link.label}

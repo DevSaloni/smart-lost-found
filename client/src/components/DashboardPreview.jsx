@@ -24,7 +24,7 @@ export default function DashboardPreview() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4">
-                            <Link to="/dashboard" className="px-10 py-5 bg-[#FF2D6B] text-white font-black text-xs uppercase tracking-[0.2em] rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_15px_30px_rgba(255,45,107,0.3)] text-center">
+                            <Link to="/dashboard" className="px-10 py-5 bg-[#FF2D6B] text-white font-black text-xs uppercase tracking-[0.2em] rounded-none hover:scale-105 active:scale-95 transition-all shadow-[0_15px_30px_rgba(255,45,107,0.3)] text-center">
                                 ENTER YOUR DASHBOARD
                             </Link>
                         </div>

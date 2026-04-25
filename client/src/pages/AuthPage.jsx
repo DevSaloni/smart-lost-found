@@ -189,15 +189,15 @@ export default function AuthPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-start px-4 relative pt-30 pb-20">
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 relative pt-20 pb-20 md:pt-30">
 
             {/* Background Glow */}
             <div className="absolute w-[400px] h-[600px] bg-[#FF2E7E] opacity-10 blur-[140px] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
 
-            <div className="relative w-full max-w-6xl grid md:grid-cols-2 gap-10 items-start">
+            <div className="relative w-full max-w-6xl grid lg:grid-cols-2 gap-10 items-start">
 
                 {/* LEFT SIDE */}
-                <div className="text-white hidden md:block mt-1">
+                <div className="text-white hidden lg:block pr-10">
                     <p className="text-[#FF2E7E] tracking-widest text-[10px] font-semibold ">
                         WELCOME BACK
                     </p>
@@ -227,7 +227,7 @@ export default function AuthPage() {
                 </div>
 
                 {/* RIGHT SIDE CARD */}
-                <div className="bg-[#0c0c0c] border border-white/10 rounded-2xl p-7 shadow-2xl">
+                <div className="bg-[#0c0c0c] border border-white/10 rounded-none p-6 md:p-10 shadow-2xl w-full max-w-md mx-auto lg:max-w-none">
 
                     {/* Tabs */}
                     {!showPhoneInput && (
@@ -267,14 +267,14 @@ export default function AuthPage() {
                                         value={formData.phone}
                                         onChange={handleChange}
                                         placeholder="+1234567890"
-                                        className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                        className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
                                         required
                                     />
                                 </div>
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className={`w-full py-3 mt-2 bg-[#FF2E7E] text-black text-[11px] font-bold tracking-widest rounded-lg shadow-[0_4px_15px_rgba(255,46,126,0.2)] hover:bg-pink-600 transition uppercase ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    className={`w-full py-3 mt-2 bg-[#FF2E7E] text-black text-[11px] font-bold tracking-widest rounded-none shadow-[0_4px_15px_rgba(255,46,126,0.2)] hover:bg-pink-600 transition uppercase ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                                 >
                                     {loading ? "SAVING..." : "COMPLETE ACCOUNT"}
                                 </button>
@@ -334,7 +334,7 @@ export default function AuthPage() {
                                                 value={formData.name}
                                                 onChange={handleChange}
                                                 placeholder="Your full name"
-                                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
                                             />
                                         </div>
                                     )}
@@ -362,7 +362,7 @@ export default function AuthPage() {
                                                 value={formData.phone}
                                                 onChange={handleChange}
                                                 placeholder="+1234567890"
-                                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
                                             />
                                         </div>
                                     )}
@@ -375,7 +375,7 @@ export default function AuthPage() {
                                             value={formData.password}
                                             onChange={handleChange}
                                             placeholder="••••••••"
-                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
                                         />
                                     </div>
                                 </div>
@@ -389,7 +389,7 @@ export default function AuthPage() {
                                             value={formData.confirmPassword}
                                             onChange={handleChange}
                                             placeholder="••••••••"
-                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
                                         />
                                     </div>
                                 )}

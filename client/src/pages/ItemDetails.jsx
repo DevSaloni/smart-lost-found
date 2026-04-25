@@ -77,13 +77,13 @@ export default function ItemDetails() {
     if (!item) return null;
 
     return (
-        <div className="bg-black text-white min-h-screen pt-30 pb-20 px-4 font-['Inter'] selection:bg-[#FF2E7E]/30">
+        <div className="bg-black text-white min-h-screen pt-20 md:pt-30 pb-20 px-4 font-['Inter'] selection:bg-[#FF2E7E]/30">
             <div className="max-w-6xl mx-auto">
-                
+
                 {/* Header Navigation */}
                 <div className="flex items-center justify-between mb-12">
-                    <button 
-                        onClick={() => navigate(-1)} 
+                    <button
+                        onClick={() => navigate(-1)}
                         className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[2px] text-gray-500 hover:text-[#FF2E7E] transition-all group"
                     >
                         <svg className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
@@ -99,15 +99,15 @@ export default function ItemDetails() {
                 </div>
 
                 <div className="grid lg:grid-cols-12 gap-16 lg:gap-24">
-                    
+
                     {/* LEFT COLUMN: Visual & Metadata */}
-                    <div className="lg:col-span-5 space-y-12">
+                    <div className="lg:col-span-5 space-y-8 md:space-y-12">
                         <div className="relative group">
-                            <div className="relative rounded-[32px] overflow-hidden bg-[#0a0a0a] border border-white/5 aspect-[4/5] shadow-2xl">
+                            <div className="relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-[#0a0a0a] border border-white/5 aspect-square sm:aspect-[4/5] shadow-2xl">
                                 {item.image_url ? (
-                                    <img 
-                                        src={`${BASE_URL}/uploads/${item.image_url}`} 
-                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+                                    <img
+                                        src={`${BASE_URL}/uploads/${item.image_url}`}
+                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                                         alt={item.item_name}
                                     />
                                 ) : (
@@ -129,7 +129,7 @@ export default function ItemDetails() {
                                 <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Reported</span>
                                 <span className="text-xs font-bold text-white uppercase">{new Date(item.date).toLocaleDateString()}</span>
                             </div>
-                            
+
                             <div>
                                 <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-6">Identifiers</h4>
                                 <div className="flex flex-wrap gap-2">
@@ -149,16 +149,16 @@ export default function ItemDetails() {
                             <h1 className="text-3xl md:text-4xl font-black text-white mb-8 tracking-tight leading-tight uppercase">
                                 {item.item_name}
                             </h1>
-                            
-                            <div className="flex items-center gap-10 mb-8 py-8 border-y border-white/10">
+
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-10 mb-8 py-8 border-y border-white/10">
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">Location</span>
-                                    <span className="text-base font-bold text-white uppercase">{item.location}</span>
+                                    <span className="text-sm md:text-base font-bold text-white uppercase">{item.location}</span>
                                 </div>
-                                <div className="w-px h-8 bg-white/10"></div>
+                                <div className="hidden sm:block w-px h-8 bg-white/10"></div>
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">Status</span>
-                                    <span className={`text-base font-bold uppercase ${item.status === 'resolved' ? 'text-blue-500' : 'text-orange-500'}`}>{item.status || 'Active'}</span>
+                                    <span className={`text-sm md:text-base font-bold uppercase ${item.status === 'resolved' ? 'text-blue-500' : 'text-orange-500'}`}>{item.status || 'Active'}</span>
                                 </div>
                             </div>
 
@@ -193,27 +193,27 @@ export default function ItemDetails() {
                                         <p className="text-xs text-gray-600 italic">No matches detected by AI yet.</p>
                                     ) : (
                                         matches.map((match, i) => (
-                                            <div key={i} className="flex items-center justify-between py-6 border-b border-white/5 hover:bg-white/[0.01] transition-all px-4 rounded-xl group">
-                                                <div className="flex items-center gap-6">
-                                                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#111] border border-white/5 shadow-xl">
+                                            <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between py-6 border-b border-white/5 hover:bg-white/[0.01] transition-all px-4 rounded-xl group gap-6">
+                                                <div className="flex items-center gap-4 md:gap-6">
+                                                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden bg-[#111] border border-white/5 shadow-xl flex-shrink-0">
                                                         {match.matched_image ? (
                                                             <img src={`${BASE_URL}/uploads/${match.matched_image}`} className="w-full h-full object-cover" alt="Match" />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center text-xl opacity-10">📦</div>
                                                         )}
                                                     </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-1">
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2 mb-1">
                                                             <span className="text-[9px] font-black text-[#FF2E7E] uppercase tracking-widest">{match.similarity_score}% Match</span>
-                                                            <span className="text-[9px] text-gray-600 uppercase tracking-widest">{match.matched_location}</span>
+                                                            <span className="text-[9px] text-gray-600 uppercase tracking-widest truncate max-w-[150px]">{match.matched_location}</span>
                                                         </div>
-                                                        <h5 className="text-sm font-bold text-white group-hover:text-[#FF2E7E] transition-colors uppercase">{match.matched_item}</h5>
+                                                        <h5 className="text-sm font-bold text-white group-hover:text-[#FF2E7E] transition-colors uppercase truncate">{match.matched_item}</h5>
                                                     </div>
                                                 </div>
                                                 {/* Button Style Matched to Navbar (Pink bg, Black text, rectangular, no rounding) */}
-                                                <button 
+                                                <button
                                                     onClick={() => navigate("/dashboard", { state: { activeTab: 'chat', matchId: match.match_id } })}
-                                                    className="bg-[#FF2E7E] text-[#0A0A0A] px-6 py-3 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-pink-600 transition-all shadow-[0_0_15px_rgba(255,46,126,0.2)] hover:shadow-[0_0_25px_rgba(255,46,126,0.4)]"
+                                                    className="w-full sm:w-auto bg-[#FF2E7E] text-[#0A0A0A] px-6 py-3 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-pink-600 transition-all shadow-[0_0_15px_rgba(255,46,126,0.2)] hover:shadow-[0_0_25px_rgba(255,46,126,0.4)]"
                                                 >
                                                     START CHAT
                                                 </button>
@@ -249,13 +249,13 @@ export default function ItemDetails() {
 
                             {/* Final Actions */}
                             <div className="flex flex-wrap items-center gap-6 pt-10 border-t border-white/10">
-                                <button 
+                                <button
                                     onClick={() => navigate("/report-item", { state: { editItem: item } })}
                                     className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
                                 >
                                     EDIT REPORT
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => {
                                         navigator.clipboard.writeText(window.location.href);
                                         toast.success("Link copied!");

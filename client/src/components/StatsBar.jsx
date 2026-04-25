@@ -18,14 +18,14 @@ export default function StatsBar() {
 
       {/* 🔥 FULL WIDTH GLASS BAR */}
       <div className="relative w-full">
-        <div className="flex flex-col md:flex-row items-center justify-between 
+        <div className="grid grid-cols-2 md:flex md:flex-row items-center justify-between 
         w-full bg-white/5 backdrop-blur-xl border-y border-white/10 ">
 
           {stats.map((stat, idx) => (
             <div
               key={stat.label}
               className={`flex-1 flex flex-col items-center justify-center py-10 px-4 text-center
-              ${idx !== stats.length - 1 ? "border-b md:border-b-0 md:border-r border-white/10" : ""}`}
+              border-white/10 ${idx % 2 === 0 ? "border-r" : ""} ${idx < 2 ? "border-b" : ""} md:border-b-0 md:border-r last:border-r-0`}
             >
 
               {/* value */}

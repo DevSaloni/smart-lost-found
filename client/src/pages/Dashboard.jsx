@@ -23,6 +23,7 @@ export default function Dashboard() {
     // Recovery details state
     const [selectedItemId, setSelectedItemId] = useState(null);
     const [itemDetailData, setItemDetailData] = useState(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -196,11 +197,47 @@ export default function Dashboard() {
     return (
         <div className="bg-[#050505] text-[#F5F0EB] min-h-screen pt-30 pb-20 px-4 font-['Inter']">
             <div className="max-w-6xl mx-auto">
-                <div className="flex flex-col lg:flex-row gap-6 h-[750px]">
+                {/* Mobile Header */}
+                <div className="lg:hidden flex items-center justify-between mb-6 bg-[#0d0d0d] border border-white/10 rounded-2xl p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-tr from-[#FF2D6B] to-[#FF6B35] rounded-xl flex items-center justify-center text-sm font-black text-white">
+                            {user?.name?.substring(0, 2).toUpperCase() || "??"}
+                        </div>
+                        <h2 className="text-sm font-bold">{user?.name || "User"}</h2>
+                    </div>
+                    <button 
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-[#FF2E7E]"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+                    </button>
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-6 lg:h-[750px] relative">
+
+                    {/* Sidebar Overlay (Mobile Only) */}
+                    {isSidebarOpen && (
+                        <div 
+                            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[998] lg:hidden animate-in fade-in duration-300"
+                            onClick={() => setIsSidebarOpen(false)}
+                        />
+                    )}
 
                     {/* Sidebar */}
-                    <div className="lg:w-[280px] bg-[#0d0d0d] border border-white/10 rounded-3xl p-6 flex flex-col">
-                        <div className="text-center mb-10">
+                    <div className={`
+                        fixed inset-y-0 left-0 w-[280px] bg-[#0d0d0d] border-r border-white/10 z-[999] transition-transform duration-300 transform lg:static lg:translate-x-0 lg:border lg:rounded-3xl lg:z-0 lg:flex
+                        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                        p-6 flex flex-col
+                    `}>
+                        {/* Close button (Mobile Only) */}
+                        <button 
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="lg:hidden absolute top-6 right-6 text-gray-500 hover:text-white"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+
+                        <div className="text-center mb-10 mt-8 lg:mt-0">
                             <div className="w-20 h-20 bg-gradient-to-tr from-[#FF2D6B] to-[#FF6B35] rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl font-black text-white">
                                 {user?.name?.substring(0, 2).toUpperCase() || "??"}
                             </div>
@@ -225,7 +262,7 @@ export default function Dashboard() {
                             ].map(item => (
                                 <button
                                     key={item.id}
-                                    onClick={() => setActiveTab(item.id)}
+                                    onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
                                     className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[15px] font-bold transition-all ${activeTab === item.id ? "bg-white/[0.03] text-[#FF2E7E]" : "text-gray-500 hover:text-white"}`}
                                 >
                                     <svg className={`w-5 h-5 ${activeTab === item.id ? "text-[#FF2E7E]" : "text-gray-600"}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg>
@@ -243,8 +280,8 @@ export default function Dashboard() {
                     </div>
 
                     {/* Content Section */}
-                    <div className="flex-1 bg-[#0d0d0d] border border-white/10 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
-                        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+                    <div className="flex-1 bg-[#0d0d0d] border border-white/10 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative min-h-[500px]">
+                        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
 
                             {/* Dashboard Tab */}
                             {activeTab === "dashboard" && (
@@ -272,7 +309,8 @@ export default function Dashboard() {
                                             <h3 className="text-[11px] font-bold uppercase tracking-[4px] text-gray-500">Your Reports</h3>
                                             <Link to="/report-item" className="bg-[#FF2E7E] px-6 py-3 rounded-2xl text-sm text-[14px] font-bold shadow-lg">+ New Report</Link>
                                         </div>
-                                        <div className="divide-y divide-white/5">
+                                        {/* Desktop View: Original Cards */}
+                                        <div className="hidden lg:block divide-y divide-white/5">
                                             {userReports.length === 0 ? <div className="p-16 text-center text-gray-700">No reports in cache.</div> : userReports.map((report, i) => (
                                                 <div key={i} className="p-8 flex items-center justify-between hover:bg-white/[0.02] transition-all group">
                                                     <div className="flex items-center gap-6">
@@ -287,6 +325,47 @@ export default function Dashboard() {
                                                     <button onClick={() => handleViewItemDetails(report.id)} className="px-4 py-2 border border-white/10 rounded-xl text-[10px] font-black text-gray-500 hover:text-white transition-all uppercase tracking-widest">Details</button>
                                                 </div>
                                             ))}
+                                        </div>
+
+                                        {/* Mobile View: Responsive Table */}
+                                        <div className="lg:hidden overflow-x-auto custom-scrollbar">
+                                            <table className="w-full min-w-[600px]">
+                                                <thead>
+                                                    <tr className="border-b border-white/5 bg-white/[0.01]">
+                                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-widest">Asset</th>
+                                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-widest">Type</th>
+                                                        <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-500 uppercase tracking-widest">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {userReports.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan="3" className="p-10 text-center text-gray-700 font-bold uppercase tracking-widest text-[10px]">No reports.</td>
+                                                        </tr>
+                                                    ) : userReports.map((report, i) => (
+                                                        <tr key={i} className="group hover:bg-white/[0.02] transition-all">
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 bg-white/5 rounded-lg overflow-hidden border border-white/5 flex-shrink-0">
+                                                                        {report.image_url ? <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-white truncate max-w-[120px]">{report.item_name}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${report.type === 'found' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                                                    {report.type}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <button onClick={() => handleViewItemDetails(report.id)} className="w-8 h-8 inline-flex items-center justify-center rounded-lg bg-white/5 border border-white/5 text-gray-500 hover:text-[#FF2E7E]">
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
                                 </div>
@@ -314,12 +393,13 @@ export default function Dashboard() {
                                                 <div className="px-3 py-1 bg-[#FF2E7E]/10 rounded-full text-[9px] font-black text-[#FF2E7E] uppercase tracking-widest border border-[#FF2E7E]/20">Live Sync</div>
                                             </div>
                                         </div>
-                                        <div className="divide-y divide-white/5">
+                                        {/* Desktop View: Original High-Fidelity Cards */}
+                                        <div className="hidden lg:block divide-y divide-white/5">
                                             {userReports.length === 0 ? (
                                                 <div className="p-24 text-center">
                                                     <div className="text-5xl mb-6 opacity-20">📂</div>
                                                     <h3 className="text-xl font-bold text-gray-300 mb-2">No reports found</h3>
-                                                    <p className="text-gray-600 text-sm max-w-xs mx-auto mb-8">You haven't submitted any reports yet. Start by reporting a lost or found item.</p>
+                                                    <p className="text-gray-600 text-sm max-w-xs mx-auto mb-8">You haven't submitted any reports yet.</p>
                                                     <Link to="/report-item" className="inline-block px-8 py-3 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-[2px] text-gray-400 hover:text-white hover:border-[#FF2E7E] transition-all">Initialise Report</Link>
                                                 </div>
                                             ) : (
@@ -366,6 +446,52 @@ export default function Dashboard() {
                                                     </div>
                                                 ))
                                             )}
+                                        </div>
+
+                                        {/* Mobile View: Space-Efficient Table */}
+                                        <div className="lg:hidden overflow-x-auto custom-scrollbar">
+                                            <table className="w-full min-w-[500px]">
+                                                <thead>
+                                                    <tr className="border-b border-white/5 bg-white/[0.02]">
+                                                        <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[3px]">Asset</th>
+                                                        <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[3px]">Status</th>
+                                                        <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-[3px]">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {userReports.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan="3" className="p-12 text-center text-gray-700 font-bold uppercase tracking-widest text-[10px]">No discovery logs.</td>
+                                                        </tr>
+                                                    ) : (
+                                                        userReports.map((report, i) => (
+                                                            <tr key={i} className="hover:bg-white/[0.01]">
+                                                                <td className="px-6 py-4">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-10 h-10 bg-white/5 rounded-lg overflow-hidden border border-white/5 flex-shrink-0">
+                                                                            {report.image_url ? <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                                                                        </div>
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[12px] font-bold text-white truncate max-w-[150px]">{report.item_name}</span>
+                                                                            <span className="text-[8px] text-gray-600 uppercase font-black">{report.type}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${report.status === 'active' ? 'text-orange-500 border-orange-500/20' : 'text-green-500 border-green-500/20'}`}>
+                                                                        {report.status === 'active' ? 'ACTIVE' : 'CLOSED'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-right">
+                                                                    <button onClick={() => handleViewItemDetails(report.id)} className="w-8 h-8 inline-flex items-center justify-center rounded-lg bg-white/5 border border-white/5 text-gray-500">
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
                                 </div>

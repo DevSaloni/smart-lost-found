@@ -280,7 +280,7 @@ export default function ReportItem() {
     };
 
     return (
-        <div className="bg-black text-white min-h-screen pt-30 pb-20 px-4">
+        <div className="bg-black text-white min-h-screen pt-20 md:pt-30 pb-20 px-4">
             <div className="max-w-6xl mx-auto pt-4">
 
                 {/* Header Section */}
@@ -293,18 +293,18 @@ export default function ReportItem() {
                     </h1>
 
                     {/* Report Type Tabs */}
-                    <div className="inline-flex bg-white/5 p-1 rounded-xl border border-white/10">
+                    <div className="flex flex-row bg-white/5 p-1 rounded-none border border-white/10 gap-1 w-fit">
                         <button
                             onClick={() => setReportType("lost")}
                             disabled={!!editId}
-                            className={`px-8 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all ${reportType === "lost" ? 'bg-[#FF2E7E] text-black shadow-lg shadow-[#FF2E7E]/20' : 'text-gray-400 hover:text-white'} ${editId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`px-8 py-2.5 rounded-none text-xs font-bold tracking-widest transition-all ${reportType === "lost" ? 'bg-[#FF2E7E] text-black shadow-lg shadow-[#FF2E7E]/20' : 'text-gray-400 hover:text-white'} ${editId ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             LOST SOMETHING
                         </button>
                         <button
                             onClick={() => setReportType("found")}
                             disabled={!!editId}
-                            className={`px-8 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all ${reportType === "found" ? 'bg-[#FF2E7E] text-black shadow-lg shadow-[#FF2E7E]/20' : 'text-gray-400 hover:text-white'} ${editId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`px-8 py-2.5 rounded-none text-xs font-bold tracking-widest transition-all ${reportType === "found" ? 'bg-[#FF2E7E] text-black shadow-lg shadow-[#FF2E7E]/20' : 'text-gray-400 hover:text-white'} ${editId ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             FOUND SOMETHING
                         </button>
@@ -422,7 +422,7 @@ export default function ReportItem() {
                                     <svg className="w-5 h-5 text-[#FF2E7E] absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                 </div>
                                 {datePickerOpen && (
-                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full md:w-[320px] bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 z-30 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-fade-in">
+                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full md:w-[320px] bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 z-40 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-fade-in max-w-[calc(100vw-32px)]">
                                         <div className="flex items-center justify-between mb-4">
                                             <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-[#FF2E7E]/20 text-gray-400 hover:text-[#FF2E7E] transition-colors">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
@@ -516,7 +516,7 @@ export default function ReportItem() {
                         {/* Alert Selection */}
                         <div>
                             <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">ALERT ME VIA</label>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                                 {["PUSH", "EMAIL", "SMS"].map((method) => (
                                     <button
                                         key={method}
@@ -534,7 +534,7 @@ export default function ReportItem() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full py-5 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-[0.2em] text-xs rounded-xl shadow-[0_10px_40px_rgba(255,46,126,0.3)] hover:bg-pink-600 hover:scale-[1.01] transition-all duration-300 flex items-center justify-center gap-3 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`w-full py-5 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-[0.2em] text-xs rounded-none shadow-[0_10px_40px_rgba(255,46,126,0.3)] hover:bg-pink-600 hover:scale-[1.01] transition-all duration-300 flex items-center justify-center gap-3 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             {loading ? "PROCESSING..." : (editId ? "SAVE CHANGES" : (reportType === "lost" ? "SUBMIT LOST REPORT" : "REPORT FOUND ITEM"))}
                             {!loading && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}

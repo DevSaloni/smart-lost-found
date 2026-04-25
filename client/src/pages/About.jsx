@@ -36,12 +36,13 @@ export default function About() {
                         OUR STORY
                     </span>
 
-                    <h2 className="mt-4 text-4xl md:text-7xl font-bold text-white uppercase tracking-tight leading-none">
-                        WE BELIEVE LOST THINGS <br />
-                        DESERVE TO COME HOME.
+                    <h2 className="mt-4 text-3xl sm:text-5xl md:text-7xl font-bold text-white uppercase tracking-tight leading-none">
+                        <span className="block">WE BELIEVE LOST</span>
+                        <span className="block"> THINGS DESERVE</span>
+                        <span className="block"> TO COME HOME.</span>
                     </h2>
 
-                    <p className="text-gray-400 text-lg md:text-xl leading-relaxed max-w-3xl mt-16">
+                    <p className="text-gray-400 text-sm md:text-base leading-relaxed max-w-2xl mt-12">
                         FindIt was built because losing something important is one of the most helpless feelings in the world.
                         And the current solution — posting on WhatsApp groups, hoping someone saw your Facebook post — isn't good enough.
                         We combined AI matching with safe, anonymous connection to create something that actually works.
@@ -63,7 +64,7 @@ export default function About() {
                     {values.map((value) => (
                         <div
                             key={value.number}
-                            className="group bg-[#0c0c0c] border border-white/10 p-10 rounded-2xl hover:border-[#FF2E7E]/30 transition-all duration-500 relative overflow-hidden flex flex-col min-h-[400px]"
+                            className="group bg-[#0c0c0c] border border-white/10 p-10 rounded-none hover:border-[#FF2E7E]/30 transition-all duration-500 relative overflow-hidden flex flex-col min-h-[400px]"
                         >
                             {/* Number from image */}
                             <span className="text-7xl font-bold text-[#FF2E7E]/10 block mb-8 group-hover:text-[#FF2E7E]/20 transition-colors tracking-tighter">

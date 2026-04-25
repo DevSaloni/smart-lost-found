@@ -13,12 +13,12 @@ export default function Footer() {
 
           {/* Logo + Tagline */}
           <div className="text-center md:text-left">
-            <div className="text-2xl font-bold tracking-widest">
-              <span className="text-[#FF2E7E]">FIND</span>
-              <span className="text-white">IT</span>
+            <div className="logo-text text-2xl justify-center md:justify-start select-none">
+                <span className="find">FIND</span>
+                <span className="it">IT.</span>
             </div>
-            <p className="text-gray-400 text-sm mt-2 max-w-sm">
-              Helping people reconnect with what they’ve lost — safely, quickly, and intelligently.
+            <p className="text-gray-400 text-xs mt-3 max-w-xs leading-relaxed mx-auto md:mx-0">
+              The intelligent recovery network. Helping people reconnect with what matters.
             </p>
           </div>
 

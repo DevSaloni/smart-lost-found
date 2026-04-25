@@ -35,7 +35,7 @@ const chatMessages = [
 export default function SafetySection() {
   return (
     <section className="bg-black py-16 w-full">
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch">        {/* Left: Safety Features */}
+      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-stretch">        {/* Left: Safety Features */}
         <div>
           <span className="text-[#FF2E7E] font-mono tracking-widest text-xs">03 — SAFETY</span>
           <h2 className="mt-2 text-3xl md:text-5xl font-bold text-white leading-tight">YOUR PRIVACY IS THE PRODUCT.</h2>
@@ -64,7 +64,7 @@ export default function SafetySection() {
           </div>
           <div className="flex items-center gap-2 mt-auto">
             <input type="text" className="flex-1 bg-[#232323] text-white rounded-lg px-3 py-2 text-sm outline-none border border-[#232323] focus:border-[#FF2E7E]" placeholder="Type a message..." disabled />
-            <button className="bg-[#FF2E7E] p-2 rounded-lg text-white hover:bg-pink-600 transition-colors duration-200" disabled>
+            <button className="bg-[#FF2E7E] p-2 rounded-none text-white hover:bg-pink-600 transition-colors duration-200" disabled>
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M22 2 11 13" /><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="m22 2-7 20-4-9-9-4 20-7Z" /></svg>
             </button>
           </div>

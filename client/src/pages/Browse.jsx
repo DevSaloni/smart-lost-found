@@ -88,7 +88,7 @@ export default function Browse() {
                     <span className="text-[#FF2E7E] font-bold tracking-[0.2em] text-[10px] uppercase block mb-4">
                         EXPLORE REPORTS
                     </span>
-                    <h1 className="text-4xl md:text-7xl font-bold uppercase tracking-tight leading-none mb-10">
+                    <h1 className="text-3xl sm:text-4xl md:text-7xl font-bold uppercase tracking-tight leading-tight md:leading-none mb-10">
                         ALL REPORTS NEAR YOU
                     </h1>
 

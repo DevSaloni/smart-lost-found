@@ -3,9 +3,28 @@ import { createMatch } from "../models/matchModel.js";
 import { createNotification } from "../models/notificationModel.js";
 import { io } from "../index.js";
 import { sendExternalNotification } from "./notificationService.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import fs from "fs";
+import path from "path";
+
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
- * Simple keyword-based similarity scoring
+ * Helper to convert local file to Gemini part object
+ */
+const fileToGenerativePart = (path, mimeType) => {
+    if (!fs.existsSync(path)) return null;
+    return {
+        inlineData: {
+            data: Buffer.from(fs.readFileSync(path)).toString("base64"),
+            mimeType
+        },
+    };
+};
+
+/**
+ * Simple keyword-based similarity scoring (Fallback)
  */
 const calculateSimilarity = (str1, str2) => {
     if (!str1 || !str2) return 0;
@@ -13,6 +32,67 @@ const calculateSimilarity = (str1, str2) => {
     const words2 = str2.toLowerCase().split(/\s+/);
     const intersection = words1.filter(word => words2.includes(word));
     return (intersection.length * 2) / (words1.length + words2.length) * 100;
+};
+
+/**
+ * AI-powered Multimodal similarity scoring using Google Gemini (Text + Image)
+ */
+const calculateAISimilarity = async (item1, item2) => {
+    try {
+        if (!process.env.GEMINI_API_KEY) return null;
+
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `
+            You are a highly intelligent Lost and Found matching system with vision capabilities. 
+            Compare the following two reports (including images if provided) and determine if they are the same item.
+            
+            Report 1 (Lost Item):
+            - Name: ${item1.item_name}
+            - Description: ${item1.description}
+            - Identifiers: ${item1.identifiers || "None"}
+            
+            Report 2 (Found Item):
+            - Name: ${item2.item_name}
+            - Description: ${item2.description}
+            - Identifiers: ${item2.identifiers || "None"}
+            
+            INSTRUCTIONS:
+            1. If images are provided, analyze colors, brands, shapes, and unique damage/stickers.
+            2. Be strict: If the descriptions match but the images show different colors or models, give a low score.
+            3. Return ONLY a JSON object with:
+               "score": (a number between 0 and 100),
+               "reason": "a very short explanation (max 15 words)"
+        `;
+
+        const visualParts = [];
+        
+        // Add images if they exist
+        if (item1.image_url) {
+            const imgPath = path.join(process.cwd(), "uploads", item1.image_url);
+            const part = fileToGenerativePart(imgPath, "image/jpeg");
+            if (part) visualParts.push(part);
+        }
+        if (item2.image_url) {
+            const imgPath = path.join(process.cwd(), "uploads", item2.image_url);
+            const part = fileToGenerativePart(imgPath, "image/jpeg");
+            if (part) visualParts.push(part);
+        }
+
+        const result = await model.generateContent([prompt, ...visualParts]);
+        const response = await result.response;
+        const text = response.text();
+        
+        // Extract JSON from response
+        const jsonMatch = text.match(/\{.*\}/s);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        return null;
+    } catch (err) {
+        console.error("AI Similarity Error:", err);
+        return null;
+    }
 };
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -50,31 +130,35 @@ export const findMatchesForReport = async (newReport) => {
         const matches = [];
 
         for (const candidate of candidates) {
-            const nameSimilarity = calculateSimilarity(item_name, candidate.item_name);
-            let locationSimilarity = 0;
-
+            // 1. Geo-Filtering
+            let locationScore = 0;
             const distance = calculateDistance(lat, lng, candidate.lat, candidate.lng);
 
             if (distance !== null) {
-                if (distance <= 5) {
-                    locationSimilarity = 100; // Within 5km is excellent
-                } else if (distance <= 20) {
-                    locationSimilarity = 80;  // Within 20km is good
-                } else if (distance <= 50) {
-                    locationSimilarity = 40;  // Within 50km is okay
-                } else {
-                    locationSimilarity = 0;   // Too far
-                    continue; // Geo-filtered out
-                }
+                if (distance <= 5) locationScore = 100;
+                else if (distance <= 20) locationScore = 80;
+                else if (distance <= 50) locationScore = 40;
+                else continue; 
             } else {
-                // Fallback to text similarity if coordinates are missing
-                locationSimilarity = calculateSimilarity(location, candidate.location);
+                locationScore = calculateSimilarity(location, candidate.location);
             }
 
-            // Average similarity
-            const totalSimilarity = Math.round((nameSimilarity * 0.7) + (locationSimilarity * 0.3));
+            // 2. Intelligence Layer (AI Text + Vision)
+            let totalSimilarity = 0;
+            let matchReason = "Keyword match found";
 
-            if (totalSimilarity >= 30) { // Threshold for a "match"
+            const aiResult = await calculateAISimilarity(newReport, candidate);
+
+            if (aiResult && aiResult.score !== undefined) {
+                totalSimilarity = Math.round((aiResult.score * 0.8) + (locationScore * 0.2));
+                matchReason = aiResult.reason;
+            } else {
+                const nameSimilarity = calculateSimilarity(item_name, candidate.item_name);
+                totalSimilarity = Math.round((nameSimilarity * 0.7) + (locationScore * 0.3));
+            }
+
+            // 3. Process the Match
+            if (totalSimilarity >= 40) { 
                 const lost_report_id = type === 'lost' ? id : candidate.id;
                 const found_report_id = type === 'found' ? id : candidate.id;
 
@@ -84,9 +168,8 @@ export const findMatchesForReport = async (newReport) => {
                     similarity_score: totalSimilarity
                 });
 
-                const notificationMessage = `[FindIt] Match Alert: We found a potential match for your "${candidate.item_name}" (${totalSimilarity}% confidence). Check your dashboard for details.`;
+                const notificationMessage = `[FindIt AI] ${matchReason} (${totalSimilarity}% Match). Check your dashboard!`;
 
-                // Send in-app notification
                 await createNotification({
                     user_id: candidate.user_id,
                     report_id: candidate.id,
@@ -94,7 +177,6 @@ export const findMatchesForReport = async (newReport) => {
                     message: notificationMessage
                 });
 
-                // Emit real-time socket event
                 io.to(`user_${candidate.user_id}`).emit("match_found", {
                     message: notificationMessage,
                     report_id: candidate.id,
@@ -102,7 +184,6 @@ export const findMatchesForReport = async (newReport) => {
                     similarity: totalSimilarity
                 });
 
-                // Send External Notification (EMAIL / SMS)
                 const method = candidate.alert_method ? candidate.alert_method.toLowerCase() : 'push';
                 if (method !== 'push') {
                     await sendExternalNotification(
@@ -122,3 +203,5 @@ export const findMatchesForReport = async (newReport) => {
         throw error;
     }
 };
+
+

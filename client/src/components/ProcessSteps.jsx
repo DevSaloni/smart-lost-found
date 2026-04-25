@@ -60,7 +60,7 @@ export default function ProcessSteps() {
           {steps.map((step, idx) => (
             <div
               key={step.title}
-              className="group flex flex-col items-start text-left px-10 py-14 transition"
+              className="group flex flex-col items-start text-left px-6 md:px-10 py-10 md:py-14 transition"
             >
 
               {/* Number */}

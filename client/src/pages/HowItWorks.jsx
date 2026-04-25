@@ -25,18 +25,18 @@ const steps = [
 
 export default function HowItWorks() {
     return (
-        <section id="how-it-works" className="bg-black pt-30 pb-17 w-full border-t border-white/5">
+        <section id="how-it-works" className="bg-black pt-20 md:pt-30 pb-17 w-full border-t border-white/5">
             <div className="max-w-6xl mx-auto px-4">
 
                 {/* Header Section */}
-                <div className="mb-20">
+                <div className="mb-12 md:mb-20 px-2">
                     <span className="text-[#FF2E7E] font-bold tracking-[0.2em] text-[10px] uppercase">
                         THE PROCESS
                     </span>
                     <h2 className="mt-4 text-4xl md:text-7xl font-bold text-white uppercase tracking-tight leading-none">
                         HOW FINDIT WORKS
                     </h2>
-                    <p className="mt-6 text-gray-400 text-lg max-w-2xl leading-relaxed">
+                    <p className="mt-6 text-gray-400 text-base md:text-lg max-w-2xl leading-relaxed">
                         Transparent, safe, and designed for real people in real situations.
                         No friction. Just results.
                     </p>

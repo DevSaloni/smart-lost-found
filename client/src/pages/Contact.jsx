@@ -96,8 +96,8 @@ export default function Contact() {
                     <span className="text-[#FF2E7E] font-bold tracking-[0.2em] text-[10px] uppercase block mb-6">
                         CONNECT WITH US
                     </span>
-                    <h1 className="text-4xl md:text-6xl font-bold uppercase tracking-tight leading-none mb-8">
-                        TALK TO THE <br /> FINDIT TEAM
+                    <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold uppercase tracking-tight leading-tight md:leading-none mb-8">
+                        TALK TO THE <br className="hidden md:block" /> FINDIT TEAM
                     </h1>
                     <p className="text-gray-400 text-[16px] leading-relaxed mb-12 max-w-md">
                         Whether it's a question, a bug, a safety concern, or genuine feedback — we're listening.

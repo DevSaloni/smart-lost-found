@@ -59,13 +59,13 @@ export default function FAQ() {
                     <span className="text-[#FF2E7E] font-bold tracking-[0.2em] text-[10px] uppercase block mb-4">
                         HELP
                     </span>
-                    <h2 className="text-4xl md:text-7xl font-bold text-white uppercase tracking-tight leading-none mb-10">
-                        FREQUENTLY <br /> ASKED <br /> QUESTIONS
+                    <h2 className="text-3xl sm:text-5xl md:text-7xl font-bold text-white uppercase tracking-tight leading-tight md:leading-none mb-10">
+                        FREQUENTLY <br className="hidden md:block" /> ASKED <br className="hidden md:block" /> QUESTIONS
                     </h2>
                     <p className="text-gray-400 text-lg mb-12 max-w-md leading-relaxed">
                         Can't find an answer here? Reach out to our team directly. We're here to help you get your things back.
                     </p>
-                    <Link to="/contact" className="inline-block px-8 py-3 mt-0 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-widest text-xs rounded-lg shadow-[0_10px_30px_rgba(255,46,126,0.2)] hover:bg-pink-600 hover:scale-105 transition-all duration-300 text-center">
+                    <Link to="/contact" className="inline-block px-8 py-3 mt-0 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-widest text-xs shadow-[0_10px_30px_rgba(255,46,126,0.2)] hover:bg-pink-600 hover:scale-105 transition-all duration-300 text-center">
                         CONTACT US
                     </Link>
                 </div>

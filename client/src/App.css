@@ -47,11 +47,22 @@
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-/* 🔥 Apply Font Globally */
+/* 🔥 Global Smoothness */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: black;
   color: white;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global Transition for Smoothness */
+a, button, input, textarea, .glass-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 h1,
@@ -61,6 +72,37 @@ h4,
 h5,
 h6 {
   font-family: 'Syne', sans-serif;
+}
+
+.logo-text {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.logo-text .find {
+  color: white;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo-text .it {
+  color: var(--accent);
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo-text:hover .find {
+  transform: translateX(-2px);
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+.logo-text:hover .it {
+  transform: translateX(2px);
+  text-shadow: 0 0 15px rgba(255, 46, 126, 0.5);
 }
 
 input,
