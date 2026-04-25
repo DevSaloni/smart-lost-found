@@ -1,7 +1,34 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import BASE_URL from "../config.js";
 import { useNavigate, useLocation } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
+});
+
+function LocationMarker({ position, setPosition }) {
+    const map = useMapEvents({
+        click(e) {
+            setPosition(e.latlng);
+            map.flyTo(e.latlng, map.getZoom());
+        },
+    });
+
+    useEffect(() => {
+        if (position) {
+            map.flyTo(position, map.getZoom());
+        }
+    }, [position, map]);
+
+    return position ? <Marker position={position} /> : null;
+}
 
 const categories = [
     "Wallet / Purse",
@@ -32,6 +59,8 @@ export default function ReportItem() {
         item_name: "",
         category: categories[0],
         location: "",
+        lat: null,
+        lng: null,
         date: "",
         description: "",
         identifiers: "",
@@ -40,9 +69,31 @@ export default function ReportItem() {
 
     const location = useLocation();
 
+    const [editId, setEditId] = useState(null);
+
     React.useEffect(() => {
         if (location.state?.reportType) {
             setReportType(location.state.reportType);
+        }
+
+        if (location.state?.editItem) {
+            const item = location.state.editItem;
+            setEditId(item.id);
+            setReportType(item.type);
+            setFormData({
+                item_name: item.item_name,
+                category: item.category,
+                location: item.location,
+                lat: item.lat || null,
+                lng: item.lng || null,
+                date: item.date ? new Date(item.date).toISOString().split('T')[0] : "",
+                description: item.description,
+                identifiers: item.identifiers || "",
+                alert_method: item.alert_method || "push"
+            });
+            if (item.image_url) {
+                setImagePreview(`${BASE_URL}/uploads/${item.image_url}`);
+            }
         }
     }, [location.state]);
 
@@ -69,6 +120,101 @@ export default function ReportItem() {
         }
     };
 
+    const [suggestions, setSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const suggestionRef = useRef(null);
+
+    // Close suggestions on outside click
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (suggestionRef.current && !suggestionRef.current.contains(event.target)) {
+                setShowSuggestions(false);
+            }
+            if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
+                setDatePickerOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const [datePickerOpen, setDatePickerOpen] = useState(false);
+    const datePickerRef = useRef(null);
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    const generateDays = () => {
+        const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+        const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+        const days = [];
+
+        for (let i = 0; i < start.getDay(); i++) {
+            days.push(<div key={`empty-${i}`} className="w-8 h-8"></div>);
+        }
+
+        for (let i = 1; i <= end.getDate(); i++) {
+            const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            const isSelected = formData.date === dateStr;
+            days.push(
+                <div
+                    key={i}
+                    onClick={() => { setFormData({ ...formData, date: dateStr }); setDatePickerOpen(false); }}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer text-xs font-bold transition-all ${isSelected ? 'bg-[#FF2E7E] text-[#050505] shadow-[0_0_10px_rgba(255,46,126,0.3)]' : 'text-gray-400 hover:bg-[#FF2E7E]/20 hover:text-white'}`}
+                >
+                    {i}
+                </div>
+            );
+        }
+        return days;
+    };
+
+    const fetchSuggestions = async (query) => {
+        if (query.length < 3) {
+            setSuggestions([]);
+            return;
+        }
+        try {
+            // Photon API (OpenStreetMap based) - focusing on Maharashtra area
+            const res = await fetch(`https://photon.komoot.io/api/?q=${query}&lat=18.97&lon=72.82&limit=5`);
+            const data = await res.json();
+            const locs = data.features.map(f => {
+                const p = f.properties;
+                const parts = [p.name, p.street, p.district, p.city, p.state].filter(Boolean);
+                // Filter for Maharashtra to be extra helpful, but don't be too strict
+                return { name: parts.join(", "), coords: f.geometry.coordinates }; // coords is [lon, lat]
+            });
+            // Remove duplicates by name
+            const unique = [];
+            const names = new Set();
+            for (const l of locs) {
+                if (!names.has(l.name)) {
+                    names.add(l.name);
+                    unique.push(l);
+                }
+            }
+            setSuggestions(unique);
+        } catch (err) {
+            console.error("Suggestion fetch error:", err);
+        }
+    };
+
+    const handleLocationChange = (e) => {
+        const value = e.target.value;
+        setFormData({ ...formData, location: value });
+        setShowSuggestions(true);
+
+        // Debounce
+        clearTimeout(window.suggestionTimeout);
+        window.suggestionTimeout = setTimeout(() => {
+            fetchSuggestions(value);
+        }, 300);
+    };
+
+    const selectSuggestion = (loc) => {
+        setFormData({ ...formData, location: loc.name, lat: loc.coords[1], lng: loc.coords[0] });
+        setSuggestions([]);
+        setShowSuggestions(false);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -92,6 +238,10 @@ export default function ReportItem() {
         submitData.append("item_name", formData.item_name);
         submitData.append("category", formData.category);
         submitData.append("location", formData.location);
+        if (formData.lat && formData.lng) {
+            submitData.append("lat", formData.lat);
+            submitData.append("lng", formData.lng);
+        }
         submitData.append("date", formData.date);
         submitData.append("description", formData.description);
         submitData.append("identifiers", formData.identifiers);
@@ -101,8 +251,11 @@ export default function ReportItem() {
         }
 
         try {
-            const response = await fetch(`${BASE_URL}/api/reports`, {
-                method: "POST",
+            const url = editId ? `${BASE_URL}/api/reports/${editId}` : `${BASE_URL}/api/reports`;
+            const method = editId ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     "Authorization": `Bearer ${token}`
                 },
@@ -112,12 +265,12 @@ export default function ReportItem() {
             const result = await response.json();
 
             if (response.ok) {
-                toast.success(result.message || "Report submitted successfully!");
+                toast.success(result.message || (editId ? "Report updated successfully!" : "Report submitted successfully!"));
                 setTimeout(() => {
-                    navigate("/dashboard");
+                    navigate(editId ? `/item/${editId}` : "/dashboard");
                 }, 2000);
             } else {
-                throw new Error(result.error || "Failed to submit report");
+                throw new Error(result.error || "Failed to process report");
             }
         } catch (error) {
             toast.error(error.message);
@@ -127,7 +280,7 @@ export default function ReportItem() {
     };
 
     return (
-        <div className="bg-black text-white min-h-screen pt-17 pb-17 px-4">
+        <div className="bg-black text-white min-h-screen pt-30 pb-20 px-4">
             <div className="max-w-6xl mx-auto pt-4">
 
                 {/* Header Section */}
@@ -136,20 +289,22 @@ export default function ReportItem() {
                         FILE A REPORT
                     </span>
                     <h1 className="text-4xl md:text-7xl font-bold uppercase tracking-tight leading-none mb-8">
-                        WHAT HAPPENED?
+                        {editId ? "EDIT YOUR REPORT" : "WHAT HAPPENED?"}
                     </h1>
 
                     {/* Report Type Tabs */}
                     <div className="inline-flex bg-white/5 p-1 rounded-xl border border-white/10">
                         <button
                             onClick={() => setReportType("lost")}
-                            className={`px-8 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all ${reportType === "lost" ? 'bg-[#FF2E7E] text-black shadow-lg shadow-[#FF2E7E]/20' : 'text-gray-400 hover:text-white'}`}
+                            disabled={!!editId}
+                            className={`px-8 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all ${reportType === "lost" ? 'bg-[#FF2E7E] text-black shadow-lg shadow-[#FF2E7E]/20' : 'text-gray-400 hover:text-white'} ${editId ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             LOST SOMETHING
                         </button>
                         <button
                             onClick={() => setReportType("found")}
-                            className={`px-8 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all ${reportType === "found" ? 'bg-[#FF2E7E] text-black shadow-lg shadow-[#FF2E7E]/20' : 'text-gray-400 hover:text-white'}`}
+                            disabled={!!editId}
+                            className={`px-8 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all ${reportType === "found" ? 'bg-[#FF2E7E] text-black shadow-lg shadow-[#FF2E7E]/20' : 'text-gray-400 hover:text-white'} ${editId ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             FOUND SOMETHING
                         </button>
@@ -161,7 +316,7 @@ export default function ReportItem() {
                     {/* LEFT SIDE: Form */}
                     <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-8">
 
-                        <div className="grid md:grid-cols-2 gap-6">
+                        <div className="grid md:grid-cols-2 gap-6 items-start">
                             {/* Item Name */}
                             <div>
                                 <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">ITEM NAME *</label>
@@ -201,30 +356,94 @@ export default function ReportItem() {
                             </div>
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
+                        <div className="grid md:grid-cols-2 gap-6 items-start">
                             {/* Location */}
-                            <div>
+                            <div className="relative" ref={suggestionRef}>
                                 <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">LOCATION *</label>
-                                <input
-                                    type="text"
-                                    name="location"
-                                    value={formData.location}
-                                    onChange={handleChange}
-                                    placeholder="e.g. Shivajinagar Metro, Pune"
-                                    className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-3.5 text-white text-sm outline-none focus:border-[#FF2E7E] transition"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        name="location"
+                                        autoComplete="off"
+                                        value={formData.location}
+                                        onChange={handleLocationChange}
+                                        onFocus={() => setShowSuggestions(true)}
+                                        placeholder="Type city, town or village (e.g. Karad)"
+                                        className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-3.5 text-white text-sm outline-none focus:border-[#FF2E7E] transition pl-11"
+                                    />
+                                    <svg className="w-5 h-5 text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+
+                                    {showSuggestions && formData.location.length > 0 && (
+                                        <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[#111] border border-white/10 rounded-xl overflow-hidden z-30 shadow-2xl animate-fade-in">
+                                            {/* Suggestions from API */}
+                                            {suggestions.map((loc, i) => (
+                                                <div
+                                                    key={i}
+                                                    onClick={() => selectSuggestion(loc)}
+                                                    className="px-5 py-3 text-sm text-gray-400 hover:text-white hover:bg-[#FF2E7E]/10 cursor-pointer transition-colors flex items-center gap-3"
+                                                >
+                                                    <span className="w-1.5 h-1.5 bg-[#FF2E7E] rounded-full opacity-50" />
+                                                    {loc.name}
+                                                </div>
+                                            ))}
+
+                                            {/* Manual Entry Option */}
+                                            <div
+                                                onClick={() => setShowSuggestions(false)}
+                                                className="px-5 py-3 text-[10px] text-gray-500 bg-white/[0.02] border-t border-white/5 uppercase tracking-widest font-bold flex items-center justify-between cursor-pointer"
+                                            >
+                                                <span>Press enter to use what you typed</span>
+                                                <span className="text-[#FF2E7E] opacity-50">MANUAL ENTRY</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Map Box */}
+                                <div className="w-full h-48 rounded-xl overflow-hidden border border-white/5 relative z-10 mt-3">
+                                    <MapContainer center={formData.lat ? [formData.lat, formData.lng] : [19.0760, 72.8777]} zoom={12} style={{ height: "100%", width: "100%", zIndex: 10 }}>
+                                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                        <LocationMarker position={formData.lat ? { lat: formData.lat, lng: formData.lng } : null} setPosition={(pos) => setFormData({ ...formData, lat: pos.lat, lng: pos.lng })} />
+                                    </MapContainer>
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest">Click on the map to drop a precise pin</p>
                             </div>
 
                             {/* Date */}
-                            <div>
+                            <div className="relative" ref={datePickerRef}>
                                 <label className="text-[10px] text-[#FF2E7E] tracking-widest font-bold uppercase block mb-2.5">DATE *</label>
-                                <input
-                                    type="date"
-                                    name="date"
-                                    value={formData.date}
-                                    onChange={handleChange}
-                                    className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-5 py-3.5 text-white text-sm outline-none focus:border-[#FF2E7E] transition appearance-none"
-                                />
+                                <div className="relative cursor-pointer" onClick={() => setDatePickerOpen(!datePickerOpen)}>
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value={formData.date ? new Date(formData.date).toLocaleDateString() : "Select a date"}
+                                        className={`w-full bg-white/[0.03] border ${datePickerOpen ? 'border-[#FF2E7E]' : 'border-white/5'} rounded-xl px-5 py-3.5 text-white text-sm outline-none cursor-pointer transition pr-11`}
+                                    />
+                                    <svg className="w-5 h-5 text-[#FF2E7E] absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                </div>
+                                {datePickerOpen && (
+                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full md:w-[320px] bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 z-30 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-fade-in">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-[#FF2E7E]/20 text-gray-400 hover:text-[#FF2E7E] transition-colors">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                                            </button>
+                                            <div className="text-xs font-bold text-white uppercase tracking-widest">
+                                                {currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                                            </div>
+                                            <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-[#FF2E7E]/20 text-gray-400 hover:text-[#FF2E7E] transition-colors">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-7 gap-1 mb-2">
+                                            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                                                <div key={day} className="h-8 flex items-center justify-center text-[10px] font-black text-gray-600 uppercase">{day}</div>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-7 gap-1">
+                                            {generateDays()}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -317,7 +536,7 @@ export default function ReportItem() {
                             disabled={loading}
                             className={`w-full py-5 bg-[#FF2E7E] text-black font-extrabold uppercase tracking-[0.2em] text-xs rounded-xl shadow-[0_10px_40px_rgba(255,46,126,0.3)] hover:bg-pink-600 hover:scale-[1.01] transition-all duration-300 flex items-center justify-center gap-3 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            {loading ? "SUBMITTING..." : (reportType === "lost" ? "SUBMIT LOST REPORT" : "REPORT FOUND ITEM")}
+                            {loading ? "PROCESSING..." : (editId ? "SAVE CHANGES" : (reportType === "lost" ? "SUBMIT LOST REPORT" : "REPORT FOUND ITEM"))}
                             {!loading && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
                         </button>
 

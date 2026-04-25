@@ -10,8 +10,8 @@ export default function HeroSection() {
       <div className="absolute inset-0 z-0">
         <img
           src={heroImg}
-          className="w-full h-full object-cover opacity-90"
-          alt="Lost and Found Background"
+          className="w-full h-full object-cover object-center opacity-80"
+          alt="Lost and Found Handoff Background"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black"></div>
       </div>
@@ -37,7 +37,7 @@ shadow-[0_0_15px_rgba(255,255,255,0.1)]">
         </h1>
 
         {/* ✨ Subheading */}
-        <p className="text-base md:text-[16px] text-gray-400 max-w-xl leading-relaxed">
+        <p className="text-base md:text-[16px] text-gray-300 max-w-xl leading-relaxed">
           Report lost or found items instantly and connect with people nearby in seconds.
           Our smart system ensures secure, anonymous matching — making recovery faster, safer, and stress-free.        </p>
 

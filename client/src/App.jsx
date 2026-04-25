@@ -15,10 +15,14 @@ import Browse from './pages/Browse';
 import MatchDetails from './pages/MatchDetails';
 import ItemDetails from './pages/ItemDetails';
 import Dashboard from './pages/Dashboard';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SocketProvider } from './contexts/SocketContext';
 
-function App() {
+function AppContent() {
+    const { user } = useAuth();
+    
     return (
-        <GoogleOAuthProvider clientId="136383796213-68mi7lq95c90iug44tuoq5a4jjkhjct4.apps.googleusercontent.com">
+        <SocketProvider user={user}>
             <div className="min-h-screen bg-[#050505]">
                 <Toaster position="top-right" reverseOrder={false} />
                 <Navbar />
@@ -38,6 +42,16 @@ function App() {
                     </Routes>
                 </main>
             </div>
+        </SocketProvider>
+    );
+}
+
+function App() {
+    return (
+        <GoogleOAuthProvider clientId="136383796213-68mi7lq95c90iug44tuoq5a4jjkhjct4.apps.googleusercontent.com">
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
         </GoogleOAuthProvider>
     );
 }

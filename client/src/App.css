@@ -285,3 +285,31 @@ select {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) #050505;
 }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Global Date Picker Overrides */
+input[type="date"] {
+  accent-color: #FF2E7E !important;
+}
+
+/* For Chrome/Edge/Safari - internal calendar parts */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  margin-right: 2px;
+  filter: invert(100%) sepia(100%) saturate(0%) hue-rotate(288deg) brightness(102%) contrast(102%); /* White icon */
+}
+
+/* To truly change the 'blue' highlight, we use selection styling if supported */
+::selection {
+  background: rgba(255, 46, 126, 0.3);
+}

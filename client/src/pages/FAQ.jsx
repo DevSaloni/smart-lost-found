@@ -51,11 +51,11 @@ export default function FAQ() {
     const [openIndex, setOpenIndex] = useState(0);
 
     return (
-        <div className="bg-black text-white min-h-screen pt-17 border-t border-white/5 relative">
+        <div className="bg-black text-white min-h-screen pt-30 pb-20 px-4 border-t border-white/5 relative">
             <div className="max-w-6xl mx-auto px-6 grid lg:grid-cols-2 gap-12 lg:gap-20 items-start relative z-10">
 
                 {/* Left Side: Static Info */}
-                <div className="lg:sticky lg:top-32">
+                <div className="lg:sticky ">
                     <span className="text-[#FF2E7E] font-bold tracking-[0.2em] text-[10px] uppercase block mb-4">
                         HELP
                     </span>

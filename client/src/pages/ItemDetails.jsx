@@ -2,6 +2,29 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import BASE_URL from "../config.js";
 import toast from "react-hot-toast";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
+});
+
+const getCategoryIcon = (category) => {
+    if (!category) return "📦";
+    const cat = category.toLowerCase();
+    if (cat.includes("wallet") || cat.includes("purse")) return "💼";
+    if (cat.includes("phone")) return "📱";
+    if (cat.includes("key")) return "🔑";
+    if (cat.includes("bag") || cat.includes("backpack")) return "🎒";
+    if (cat.includes("pet")) return "🐕";
+    if (cat.includes("jewel") || cat.includes("ring")) return "💍";
+    if (cat.includes("document")) return "📄";
+    return "📦";
+};
 
 export default function ItemDetails() {
     const { id } = useParams();
@@ -17,7 +40,6 @@ export default function ItemDetails() {
                 const data = await res.json();
                 if (res.ok) {
                     setItem(data.report);
-                    // Also fetch matches for this item
                     const token = localStorage.getItem("token");
                     if (token) {
                         const matchesRes = await fetch(`${BASE_URL}/api/matches/user-matches`, {
@@ -46,11 +68,8 @@ export default function ItemDetails() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-[#FF2E7E]/20 border-t-[#FF2E7E] rounded-full animate-spin"></div>
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[4px]">Syncing Archive...</p>
-                </div>
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-[#FF2E7E]/20 border-t-[#FF2E7E] rounded-full animate-spin"></div>
             </div>
         );
     }
@@ -58,160 +77,194 @@ export default function ItemDetails() {
     if (!item) return null;
 
     return (
-        <div className="bg-[#050505] text-[#F5F0EB] min-h-screen pt-32 pb-24 px-4 md:px-8 font-['Inter']">
-            <div className="max-w-7xl mx-auto">
-                {/* Navigation Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-16 gap-6">
-                    <div className="space-y-4">
-                        <button 
-                            onClick={() => navigate(-1)} 
-                            className="flex items-center gap-3 text-[11px] font-black uppercase tracking-[3px] text-gray-500 hover:text-[#FF2E7E] transition-all group"
-                        >
-                            <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-[#FF2E7E]/10 transition-all">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                            </div>
-                            Return to Previous
-                        </button>
-                        <h1 className="text-6xl md:text-8xl font-black text-white leading-none uppercase tracking-tighter italic">
-                            {item.item_name}
-                        </h1>
-                    </div>
-                    <div className="flex flex-col items-end gap-3">
-                         <div className={`px-6 py-3 rounded-2xl text-[12px] font-black uppercase tracking-[4px] ${item.type === 'found' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'} border`}>
-                            Protocol: {item.type}
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest text-right">
-                           Asset ID: #{String(item.id).padStart(6, '0')} <br/>
-                           Registered {new Date(item.created_at).toLocaleDateString()}
-                        </div>
+        <div className="bg-black text-white min-h-screen pt-30 pb-20 px-4 font-['Inter'] selection:bg-[#FF2E7E]/30">
+            <div className="max-w-6xl mx-auto">
+                
+                {/* Header Navigation */}
+                <div className="flex items-center justify-between mb-12">
+                    <button 
+                        onClick={() => navigate(-1)} 
+                        className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[2px] text-gray-500 hover:text-[#FF2E7E] transition-all group"
+                    >
+                        <svg className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+                        Back
+                    </button>
+                    <div className="flex items-center gap-4">
+                        <span className={`text-[10px] font-black tracking-[3px] uppercase ${item.type === 'found' ? 'text-green-500' : 'text-[#FF2E7E]'}`}>
+                            {item.type} Report
+                        </span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-white/10"></div>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-[2px]">ID #{String(item.id).padStart(6, '0')}</span>
                     </div>
                 </div>
 
-                <div className="grid lg:grid-cols-12 gap-12">
-                    {/* Visual Evidence Section */}
-                    <div className="lg:col-span-5 space-y-8">
-                        <div className="bg-[#0d0d0d] border border-white/5 rounded-[56px] overflow-hidden relative group shadow-[0_40px_80px_rgba(0,0,0,0.5)]">
-                            <div className="aspect-[1/1.2]">
+                <div className="grid lg:grid-cols-12 gap-16 lg:gap-24">
+                    
+                    {/* LEFT COLUMN: Visual & Metadata */}
+                    <div className="lg:col-span-5 space-y-12">
+                        <div className="relative group">
+                            <div className="relative rounded-[32px] overflow-hidden bg-[#0a0a0a] border border-white/5 aspect-[4/5] shadow-2xl">
                                 {item.image_url ? (
                                     <img 
                                         src={`${BASE_URL}/uploads/${item.image_url}`} 
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[3000ms]" 
+                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
                                         alt={item.item_name}
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center bg-white/[0.01] opacity-20">
-                                        <div className="text-9xl mb-6">📦</div>
-                                        <div className="text-[12px] font-black uppercase tracking-[10px]">No Visual Data</div>
+                                    <div className="w-full h-full flex flex-col items-center justify-center">
+                                        <span className="text-9xl mb-6 opacity-10">{getCategoryIcon(item.category)}</span>
+                                        <p className="text-[10px] font-bold uppercase tracking-[6px] text-gray-700">No Image</p>
                                     </div>
                                 )}
                             </div>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 p-12 flex flex-col justify-end">
-                                <span className="text-[11px] font-black text-[#FF2E7E] uppercase tracking-[5px] mb-2">Original Capture</span>
-                                <p className="text-gray-400 font-medium">Secured evidence from point of discovery.</p>
-                            </div>
                         </div>
 
-                         <div className="bg-white/[0.01] border border-white/5 p-10 rounded-[48px] space-y-8">
+                        {/* Metadata List */}
+                        <div className="space-y-6 pt-4">
+                            <div className="flex items-center justify-between py-4 border-b border-white/5">
+                                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Category</span>
+                                <span className="text-xs font-bold text-white uppercase">{item.category}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-4 border-b border-white/5">
+                                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Reported</span>
+                                <span className="text-xs font-bold text-white uppercase">{new Date(item.date).toLocaleDateString()}</span>
+                            </div>
+                            
                             <div>
-                                <h4 className="text-[10px] font-black text-gray-600 uppercase tracking-[5px] mb-6">Tactile Markers</h4>
+                                <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-6">Identifiers</h4>
                                 <div className="flex flex-wrap gap-2">
                                     {item.identifiers ? item.identifiers.split(',').map((tag, i) => (
-                                        <span key={i} className="px-5 py-3 bg-white/5 border border-white/5 rounded-2xl text-[11px] font-bold text-gray-400 uppercase tracking-wider hover:text-white hover:border-[#FF2E7E]/30 transition-all cursor-default">{tag.trim()}</span>
-                                    )) : <span className="text-gray-600 italic">No specific marks cataloged.</span>}
-                                </div>
-                            </div>
-                            <div className="pt-4 border-t border-white/5 space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Alert Method</span>
-                                    <span className="text-[12px] font-bold text-white uppercase italic">{item.alert_method || 'System Internal'}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[10px] font-black text-gray-600 uppercase tracking-widest">
-                                    <span>Sync Status</span>
-                                    <span className="text-green-500">Encrypted</span>
+                                        <span key={i} className="px-3 py-1.5 bg-white/[0.03] border border-white/10 rounded-lg text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+                                            {tag.trim()}
+                                        </span>
+                                    )) : <span className="text-xs text-gray-700 italic">None</span>}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Report Analytics Section */}
-                    <div className="lg:col-span-7 space-y-12">
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white/[0.02] border border-white/5 p-10 rounded-[40px] hover:bg-white/[0.03] transition-all">
-                                <div className="w-12 h-12 bg-[#FF2E7E]/10 rounded-2xl flex items-center justify-center text-[#FF2E7E] mb-8 border border-[#FF2E7E]/10">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    {/* RIGHT COLUMN: Content & Details */}
+                    <div className="lg:col-span-7">
+                        <div className="max-w-2xl">
+                            <h1 className="text-3xl md:text-4xl font-black text-white mb-8 tracking-tight leading-tight uppercase">
+                                {item.item_name}
+                            </h1>
+                            
+                            <div className="flex items-center gap-10 mb-8 py-8 border-y border-white/10">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">Location</span>
+                                    <span className="text-base font-bold text-white uppercase">{item.location}</span>
                                 </div>
-                                <h4 className="text-[10px] font-black text-gray-600 uppercase tracking-[4px] mb-3">Discovery Zone</h4>
-                                <div className="text-2xl font-bold text-white leading-tight">{item.location}</div>
-                            </div>
-                            <div className="bg-white/[0.02] border border-white/5 p-10 rounded-[40px] hover:bg-white/[0.03] transition-all">
-                                <div className="w-12 h-12 bg-[#FF2E7E]/10 rounded-2xl flex items-center justify-center text-[#FF2E7E] mb-8 border border-[#FF2E7E]/10">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                <div className="w-px h-8 bg-white/10"></div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">Status</span>
+                                    <span className={`text-base font-bold uppercase ${item.status === 'resolved' ? 'text-blue-500' : 'text-orange-500'}`}>{item.status || 'Active'}</span>
                                 </div>
-                                <h4 className="text-[10px] font-black text-gray-600 uppercase tracking-[4px] mb-3">Timeline Log</h4>
-                                <div className="text-2xl font-bold text-white leading-tight">{new Date(item.date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                             </div>
-                        </div>
 
-                        <div className="bg-white/[0.01] border border-white/5 p-12 rounded-[56px] relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-96 h-96 bg-[#FF2E7E]/5 blur-[120px] -mr-48 -mt-48 rounded-full"></div>
-                            <div className="relative z-10">
-                                <h3 className="text-[12px] font-black uppercase tracking-[6px] text-[#FF2E7E] mb-8">Asset Description</h3>
-                                <p className="text-2xl text-gray-300 font-medium leading-relaxed max-w-3xl italic">
-                                    "{item.description || "No supplemental discovery logs provided for this recovery asset."}"
+                            {item.lat && item.lng && (
+                                <div className="mb-12 border border-white/5 rounded-xl overflow-hidden shadow-2xl relative z-10" style={{ height: "200px" }}>
+                                    <MapContainer center={[item.lat, item.lng]} zoom={14} style={{ height: "100%", width: "100%", zIndex: 10 }}>
+                                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                        <Marker position={[item.lat, item.lng]} />
+                                    </MapContainer>
+                                </div>
+                            )}
+
+                            {/* Detailed Description */}
+                            <section className="mb-16">
+                                <h3 className="text-[10px] font-bold text-[#FF2E7E] uppercase tracking-[4px] mb-6">Description</h3>
+                                <p className="text-base md:text-lg text-gray-400 leading-relaxed font-medium">
+                                    {item.description || "No specific details provided."}
                                 </p>
-                            </div>
-                        </div>
+                            </section>
 
-                        {/* Matches Hub */}
-                        <div className="bg-white/[0.01] border border-white/5 p-12 rounded-[56px]">
-                            <div className="flex items-center justify-between mb-10">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-3 h-3 bg-[#FF2E7E] rounded-full shadow-[0_0_15px_#FF2E7E]"></div>
-                                    <h3 className="text-[14px] font-bold uppercase tracking-[6px] text-white">Neural Correlates</h3>
+                            <div className="h-px bg-white/10 w-full mb-16"></div>
+
+                            {/* Matches Hub */}
+                            <section className="mb-16">
+                                <div className="flex items-center justify-between mb-10">
+                                    <h3 className="text-[10px] font-bold text-[#FF2E7E] uppercase tracking-[4px]">Potential Matches</h3>
+                                    <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">{matches.length} Records Found</span>
                                 </div>
-                                <span className="text-[10px] font-black text-gray-700 uppercase tracking-[4px] italic">Active Scan: {matches.length} hits</span>
-                            </div>
 
-                            <div className="space-y-6">
-                                {matches.length === 0 ? (
-                                    <div className="py-24 border border-dashed border-white/5 rounded-[40px] flex flex-col items-center justify-center text-center">
-                                        <div className="text-6xl opacity-10 mb-6 animate-pulse">🛰️</div>
-                                        <p className="text-[12px] font-black text-gray-700 uppercase tracking-[4px]">System searching for semantic similarities...</p>
-                                    </div>
-                                ) : (
-                                    matches.map((match, i) => (
-                                        <div key={i} className="bg-white/[0.02] border border-white/5 p-8 rounded-[40px] hover:border-[#FF2E7E]/40 transition-all flex flex-col md:flex-row items-center justify-between gap-10 group overflow-hidden relative">
-                                            <div className="absolute top-0 left-0 w-1 h-full bg-[#FF2E7E] opacity-0 group-hover:opacity-100 transition-all"></div>
-                                            <div className="flex items-center gap-8">
-                                                <div className="w-24 h-24 bg-black rounded-3xl overflow-hidden border border-white/10 group-hover:scale-105 transition-transform duration-700 shadow-2xl">
-                                                    {match.matched_image ? <img src={`${BASE_URL}/uploads/${match.matched_image}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl opacity-20">📦</div>}
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <span className="text-[10px] font-black text-[#FF2E7E] uppercase tracking-widest">{match.similarity_score}% Confidence</span>
-                                                        <span className="w-1 h-1 bg-gray-800 rounded-full"></span>
-                                                        <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{match.matched_location}</span>
+                                <div className="space-y-4">
+                                    {matches.length === 0 ? (
+                                        <p className="text-xs text-gray-600 italic">No matches detected by AI yet.</p>
+                                    ) : (
+                                        matches.map((match, i) => (
+                                            <div key={i} className="flex items-center justify-between py-6 border-b border-white/5 hover:bg-white/[0.01] transition-all px-4 rounded-xl group">
+                                                <div className="flex items-center gap-6">
+                                                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#111] border border-white/5 shadow-xl">
+                                                        {match.matched_image ? (
+                                                            <img src={`${BASE_URL}/uploads/${match.matched_image}`} className="w-full h-full object-cover" alt="Match" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-xl opacity-10">📦</div>
+                                                        )}
                                                     </div>
-                                                    <h5 className="text-2xl font-black text-white group-hover:text-[#FF2E7E] transition-colors uppercase">{match.matched_item}</h5>
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-[9px] font-black text-[#FF2E7E] uppercase tracking-widest">{match.similarity_score}% Match</span>
+                                                            <span className="text-[9px] text-gray-600 uppercase tracking-widest">{match.matched_location}</span>
+                                                        </div>
+                                                        <h5 className="text-sm font-bold text-white group-hover:text-[#FF2E7E] transition-colors uppercase">{match.matched_item}</h5>
+                                                    </div>
                                                 </div>
+                                                {/* Button Style Matched to Navbar (Pink bg, Black text, rectangular, no rounding) */}
+                                                <button 
+                                                    onClick={() => navigate("/dashboard", { state: { activeTab: 'chat', matchId: match.match_id } })}
+                                                    className="bg-[#FF2E7E] text-[#0A0A0A] px-6 py-3 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-pink-600 transition-all shadow-[0_0_15px_rgba(255,46,126,0.2)] hover:shadow-[0_0_25px_rgba(255,46,126,0.4)]"
+                                                >
+                                                    START CHAT
+                                                </button>
                                             </div>
-                                            <button 
-                                                onClick={() => navigate("/dashboard", { state: { activeTab: 'chat' } })}
-                                                className="px-10 py-5 bg-[#FF2E7E] text-white rounded-[24px] text-[12px] font-black uppercase tracking-[3px] hover:scale-[1.05] active:scale-95 transition-all shadow-[0_15px_30px_rgba(255,46,126,0.3)]"
-                                            >
-                                                Initiate Relay
-                                            </button>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
+                                        ))
+                                    )}
+                                </div>
+                            </section>
 
-                        {/* Page Footer Actions */}
-                        <div className="flex gap-4 pt-4">
-                            <button onClick={() => window.print()} className="flex-1 py-6 bg-white/5 border border-white/10 rounded-[28px] text-[11px] font-black uppercase tracking-[5px] text-gray-500 hover:text-white hover:bg-white/10 transition-all">Export Secure Log (PDF)</button>
-                            <Link to="/report-item" className="flex-1 py-6 bg-white/5 border border-white/10 rounded-[28px] text-[11px] font-black uppercase tracking-[5px] text-gray-500 hover:text-white hover:bg-white/10 transition-all text-center">Modify Discovery Entry</Link>
+                            <div className="h-px bg-white/10 w-full mb-16"></div>
+
+                            {/* Safety Guidance - Moved to Bottom */}
+                            <section className="mb-20">
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_10px_orange]"></div>
+                                    <h4 className="text-[10px] font-bold text-white uppercase tracking-[4px]">Safety Guidance</h4>
+                                </div>
+                                <ul className="space-y-4">
+                                    <li className="flex items-start gap-3 text-xs text-gray-500 leading-relaxed">
+                                        <span className="text-[#FF2E7E] font-bold">•</span>
+                                        Verify all item details through the secure chat system before arranging any physical meetups.
+                                    </li>
+                                    <li className="flex items-start gap-3 text-xs text-gray-500 leading-relaxed">
+                                        <span className="text-[#FF2E7E] font-bold">•</span>
+                                        Handoffs should always take place in public, well-monitored locations during daylight hours.
+                                    </li>
+                                    <li className="flex items-start gap-3 text-xs text-gray-500 leading-relaxed">
+                                        <span className="text-[#FF2E7E] font-bold">•</span>
+                                        Use our OTP Verification process to confirm the successful transfer of the item.
+                                    </li>
+                                </ul>
+                            </section>
+
+                            {/* Final Actions */}
+                            <div className="flex flex-wrap items-center gap-6 pt-10 border-t border-white/10">
+                                <button 
+                                    onClick={() => navigate("/report-item", { state: { editItem: item } })}
+                                    className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
+                                >
+                                    EDIT REPORT
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(window.location.href);
+                                        toast.success("Link copied!");
+                                    }}
+                                    className="border border-[#FF2E7E]/30 text-[#FF2E7E] bg-transparent px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-[#FF2E7E] hover:text-[#050505] transition-all hover:-translate-y-0.5"
+                                >
+                                    SHARE LINK
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

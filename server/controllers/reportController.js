@@ -13,6 +13,8 @@ export const createReportController = async (req, res) => {
             identifiers,
             status,
             alert_method,
+            lat,
+            lng
         } = req.body;
 
         const trimmedItemName = item_name ? item_name.trim() : "";
@@ -30,7 +32,9 @@ export const createReportController = async (req, res) => {
             description,
             identifiers,
             image_url: image,
-            alert_method
+            alert_method,
+            lat,
+            lng
         });
 
         // Trigger Matchmaking
@@ -106,6 +110,8 @@ export const updateReportController = async (req, res) => {
             description,
             identifiers,
             alert_method,
+            lat,
+            lng
         } = req.body;
 
         const trimmedItemName = item_name ? item_name.trim() : "";
@@ -122,7 +128,9 @@ export const updateReportController = async (req, res) => {
             description,
             identifiers,
             alert_method,
-            image_url: image
+            image_url: image,
+            lat,
+            lng
         };
 
         const updatedReport = await updateReport(id, req.user.id, reportData);

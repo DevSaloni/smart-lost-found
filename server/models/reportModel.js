@@ -38,16 +38,18 @@ export const createReport = async (reportData) => {
         description,
         identifiers,
         image_url,
-        alert_method
+        alert_method,
+        lat,
+        lng
     } = reportData;
 
     const query = `
-        INSERT INTO reports (user_id, type, item_name, category, location, date, description, identifiers, image_url, alert_method)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        INSERT INTO reports (user_id, type, item_name, category, location, date, description, identifiers, image_url, alert_method, lat, lng)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *;
     `;
 
-    const values = [user_id, type, item_name, category, location, date, description, identifiers, image_url, alert_method];
+    const values = [user_id, type, item_name, category, location, date, description, identifiers, image_url, alert_method, lat, lng];
     const result = await pool.query(query, values);
     return result.rows[0];
 };
@@ -125,15 +127,17 @@ export const updateReport = async (id, userId, reportData) => {
         description,
         identifiers,
         image_url,
-        alert_method
+        alert_method,
+        lat,
+        lng
     } = reportData;
 
     let query = `
         UPDATE reports 
-        SET type = $1, item_name = $2, category = $3, location = $4, date = $5, description = $6, identifiers = $7, alert_method = $8
+        SET type = $1, item_name = $2, category = $3, location = $4, date = $5, description = $6, identifiers = $7, alert_method = $8, lat = $9, lng = $10
     `;
-    const values = [type, item_name, category, location, date, description, identifiers, alert_method];
-    let paramCount = 9;
+    const values = [type, item_name, category, location, date, description, identifiers, alert_method, lat, lng];
+    let paramCount = 11;
 
     if (image_url !== undefined && image_url !== null) {
         query += `, image_url = $${paramCount}`;

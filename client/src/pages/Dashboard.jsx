@@ -74,11 +74,26 @@ export default function Dashboard() {
         fetchData();
     }, [navigate, location.state]);
 
+    const lastProcessedMatchId = React.useRef(null);
+
     useEffect(() => {
-        if (activeTab === "chat" && !selectedMatch && userMatches.length > 0) {
-            setSelectedMatch(userMatches[0]);
+        if (activeTab === "chat" && userMatches.length > 0) {
+            const stateMatchId = location.state?.matchId;
+            console.log("DEBUG - Dashboard state processing:", { stateMatchId, activeTab });
+
+            if (stateMatchId && Number(stateMatchId) !== lastProcessedMatchId.current) {
+                const target = userMatches.find(m => Number(m.match_id) === Number(stateMatchId));
+                if (target) {
+                    setSelectedMatch(target);
+                    lastProcessedMatchId.current = stateMatchId;
+                }
+            }
+            // Fallback: If no match is selected yet, pick the first one
+            else if (!selectedMatch) {
+                setSelectedMatch(userMatches[0]);
+            }
         }
-    }, [activeTab, userMatches, selectedMatch]);
+    }, [activeTab, userMatches, selectedMatch, location.state]);
 
     useEffect(() => {
         let interval;
@@ -159,10 +174,12 @@ export default function Dashboard() {
             });
             const data = await res.json();
             if (res.ok) {
-                toast.success("Verified!");
+                toast.success("Handoff Verified! Trust scores updated.");
                 setIsVerifying(false);
                 setHandoffCode(null);
-                navigate(0);
+                setInputCode("");
+                // Use window.location.reload() to force a complete context and data refresh
+                setTimeout(() => window.location.reload(), 1500);
             } else {
                 toast.error(data.error);
             }
@@ -177,7 +194,7 @@ export default function Dashboard() {
 
 
     return (
-        <div className="bg-[#050505] text-[#F5F0EB] min-h-screen pt-24 pb-20 px-4 md:px-8 font-['Inter']">
+        <div className="bg-[#050505] text-[#F5F0EB] min-h-screen pt-30 pb-20 px-4 font-['Inter']">
             <div className="max-w-6xl mx-auto">
                 <div className="flex flex-col lg:flex-row gap-6 h-[750px]">
 
@@ -189,7 +206,14 @@ export default function Dashboard() {
                             </div>
                             <h2 className="text-xl font-bold">{user?.name || "User"}</h2>
                             <p className="text-sm text-gray-500 font-medium lowercase mt-0.5">{user?.email}</p>
-                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-2">Verified Hub</p>
+                            <div className="mt-4 flex flex-col items-center">
+                                <div className="px-3 py-1 bg-[#FF2E7E]/10 border border-[#FF2E7E]/20 rounded-full">
+                                    <p className="text-[10px] font-bold text-[#FF2E7E] uppercase tracking-widest">
+                                        Trust Score: {user?.trust_score || 0}
+                                    </p>
+                                </div>
+                                <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-3">Verified Member</p>
+                            </div>
                         </div>
 
                         <nav className="flex-1 space-y-2">
@@ -234,7 +258,7 @@ export default function Dashboard() {
                                         {[
                                             { label: "Active reports", value: userReports.length },
                                             { label: "Matches found", value: userMatches.length },
-                                            { label: "Successfully Return", value: userMatches.filter(m => m.match_status === 'resolved').length }
+                                            { label: "Trust Score", value: user?.trust_score || 0 }
                                         ].map((stat, i) => (
                                             <div key={i} className="bg-white/[0.02] border border-white/5 rounded-2xl p-8">
                                                 <div className="text-4xl font-bold text-white mb-2">{stat.value}</div>
@@ -447,26 +471,26 @@ export default function Dashboard() {
                                                         ))}
 
                                                         {isVerifying && (
-                                                            <div className="absolute inset-0 bg-black/95 backdrop-blur-2xl flex items-center justify-center p-10 z-50">
-                                                                <div className="max-w-xs w-full bg-[#111] border border-[#FF2E7E]/30 p-12 rounded-[56px] text-center shadow-2xl relative">
-                                                                    <h3 className="text-xl font-bold uppercase tracking-[8px] text-white mb-8 leading-none">Trust Token</h3>
+                                                            <div className="absolute inset-0 bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6 z-50">
+                                                                <div className="max-w-[300px] w-full bg-[#111] border border-[#FF2E7E]/30 p-8 rounded-[40px] text-center shadow-2xl relative">
+                                                                    <h3 className="text-lg font-bold uppercase tracking-[6px] text-white mb-6 leading-none">Trust Token</h3>
                                                                     {user?.id === selectedMatch.owner_user_id ? (
-                                                                        <div className="space-y-10">
-                                                                            <p className="text-[11px] text-gray-600 font-bold uppercase tracking-wider">Provide this to the finder</p>
+                                                                        <div className="space-y-6">
+                                                                            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wider">Provide to finder</p>
                                                                             {handoffCode ? (
-                                                                                <div className="text-5xl font-black text-[#FF2E7E] bg-white/5 py-8 rounded-[32px] tracking-[5px] animate-pulse">{handoffCode}</div>
+                                                                                <div className="text-5xl font-black text-[#FF2E7E] bg-white/5 py-4 rounded-[20px] tracking-[8px] animate-pulse">{handoffCode}</div>
                                                                             ) : (
-                                                                                <button onClick={handleGenerateCode} className="w-full py-5 bg-[#FF2E7E] text-white font-bold uppercase tracking-widest text-[11px] rounded-[32px] shadow-2xl">Generate Code</button>
+                                                                                <button onClick={handleGenerateCode} className="w-full py-3.5 bg-[#FF2E7E] text-[#050505] font-black uppercase tracking-widest text-[10px] rounded-[20px] shadow-[0_0_15px_rgba(255,46,126,0.2)] hover:bg-[#FF2E7E]/90 transition-all">Generate Code</button>
                                                                             )}
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="space-y-10">
-                                                                            <p className="text-[11px] text-gray-600 font-bold uppercase tracking-wider">Enter owner's token</p>
-                                                                            <input type="text" maxLength="6" value={inputCode} onChange={e => setInputCode(e.target.value)} className="w-full bg-black border border-white/10 rounded-[32px] py-8 text-center text-4xl font-black outline-none focus:border-[#FF2E7E] text-white tracking-[15px]" placeholder="000000" />
-                                                                            <button onClick={handleVerifyCode} className="w-full py-5 bg-[#FF2E7E] text-white font-black uppercase tracking-widest text-[11px] rounded-[32px] shadow-2xl">Authorise Relay</button>
+                                                                        <div className="space-y-6">
+                                                                            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wider">Enter owner's token</p>
+                                                                            <input type="text" maxLength="6" value={inputCode} onChange={e => setInputCode(e.target.value)} className="w-full bg-black border border-white/10 rounded-[20px] py-4 text-center text-4xl font-black outline-none focus:border-[#FF2E7E] text-white tracking-[15px] placeholder:tracking-normal" placeholder="000000" />
+                                                                            <button onClick={handleVerifyCode} className="w-full py-3.5 bg-[#FF2E7E] text-[#050505] font-black uppercase tracking-widest text-[10px] rounded-[20px] shadow-[0_0_15px_rgba(255,46,126,0.2)] hover:bg-[#FF2E7E]/90 transition-all">Authorise Relay</button>
                                                                         </div>
                                                                     )}
-                                                                    <button onClick={() => { setIsVerifying(false); setHandoffCode(null); }} className="mt-10 text-[9px] font-bold text-gray-700 uppercase tracking-[6px] hover:text-white">Abort Relay</button>
+                                                                    <button onClick={() => { setIsVerifying(false); setHandoffCode(null); }} className="mt-8 text-[9px] font-bold text-gray-700 uppercase tracking-[4px] hover:text-[#FF2E7E] transition-colors">Abort Relay</button>
                                                                 </div>
                                                             </div>
                                                         )}

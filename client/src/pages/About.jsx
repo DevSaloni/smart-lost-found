@@ -22,7 +22,7 @@ export default function About() {
     return (
         <div className="bg-black text-white min-h-screen">
             {/* Hero Section */}
-            <section className="pt-17 pb-17 px-4 relative overflow-hidden">
+            <section className="pt-30 pb-17 px-4 relative overflow-hidden">
                 {/* Background Watermark Text "FIND IT" */}
                 <div className="absolute right-[-100px] top-[10%] select-none pointer-events-none opacity-[0.03]">
                     <h2 className="text-[200px] md:text-[350px] font-extrabold text-white leading-none tracking-tighter"

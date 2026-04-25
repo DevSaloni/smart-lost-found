@@ -85,7 +85,7 @@ export default function Contact() {
     };
 
     return (
-        <div className="bg-black text-white min-h-screen flex flex-col items-center justify-start px-4 relative pt-17 pb-17 overflow-hidden">
+        <div className="bg-black text-white min-h-screen flex flex-col items-center justify-start px-4 relative pt-30 pb-20 overflow-hidden">
             {/* Background Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#FF2E7E] opacity-[0.05] blur-[120px] rounded-full" />
 

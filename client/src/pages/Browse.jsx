@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import BASE_URL from "../config.js";
 
-const quickFilters = ["ALL", "LOST", "FOUND", "WALLET", "PHONE", "KEYS", "BAG", "JEWELLERY", "PET", "DOCUMENTS"];
+const quickFilters = ["ALL", "WALLET", "PHONE", "KEYS", "BAG", "JEWELLERY", "PET", "DOCUMENTS"];
 
 const sortOptions = ["Latest first", "Oldest first", "Top matches"];
 
@@ -38,12 +38,12 @@ export default function Browse() {
             try {
                 setLoading(true);
                 const queryParams = new URLSearchParams();
+
+                // Force Browse page to ONLY show 'lost' items to maintain professional focus
+                queryParams.append("type", "lost");
+
                 if (activeQuickFilter !== "ALL") {
-                    if (activeQuickFilter === "LOST" || activeQuickFilter === "FOUND") {
-                        queryParams.append("type", activeQuickFilter);
-                    } else {
-                        queryParams.append("category", activeQuickFilter);
-                    }
+                    queryParams.append("category", activeQuickFilter);
                 }
                 if (selectedCategory !== "All categories") {
                     queryParams.append("category", selectedCategory);
@@ -80,8 +80,8 @@ export default function Browse() {
     }, [activeQuickFilter, selectedCategory, selectedStatus, selectedSort, searchQuery, selectedDateRange]);
 
     return (
-        <div className="bg-black text-white min-h-screen pt-12 pb-17 px-4">
-            <div className="max-w-6xl mx-auto pt-10">
+        <div className="bg-black text-white min-h-screen pt-30 pb-20 px-4">
+            <div className="max-w-6xl mx-auto">
 
                 {/* Header Section */}
                 <div className="mb-12">
@@ -134,7 +134,7 @@ export default function Browse() {
                         <div className="bg-[#0c0c0c] border border-white/5 rounded-3xl p-8">
                             <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#FF2E7E] uppercase mb-6">CATEGORY</h3>
                             <div className="space-y-4">
-                                {["All categories", "Wallet / Purse", "Phone", "Keys", "Bag / Backpack", "Jewellery"].map((cat, i) => (
+                                {["All categories", "Wallet / Purse", "Electronics", "Documents / IDs", "Keys", "Bags / Luggage", "Pets", "Jewellery", "Other"].map((cat, i) => (
                                     <label key={cat} onClick={() => setSelectedCategory(cat)} className="flex items-center justify-between group cursor-pointer">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedCategory === cat ? 'bg-[#FF2E7E] border-[#FF2E7E]' : 'border-white/20 group-hover:border-white/40'}`}>
