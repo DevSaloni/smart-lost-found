@@ -17,9 +17,7 @@ export const sendMessage = async (req, res) => {
 
         // Emit real-time socket event for the message
         io.to(`user_${receiver_id}`).emit("new_message", {
-            match_id,
-            sender_id,
-            message,
+            ...result.rows[0],
             sender_name: req.user.name
         });
 

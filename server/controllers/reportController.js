@@ -37,15 +37,13 @@ export const createReportController = async (req, res) => {
             lng
         });
 
-        // Trigger Matchmaking
-        const matches = await findMatchesForReport(report);
+        // Trigger Matchmaking in the background to keep response time fast
+        findMatchesForReport(report).catch(err => console.error("Background Matchmaking Error:", err));
 
         res.status(201).json({
             success: true,
-            message: "Report created successfully",
-            report,
-            matches_found: matches.length,
-            matches
+            message: "Report created successfully. AI is scanning for matches in the background.",
+            report
         });
 
     } catch (error) {
@@ -139,9 +137,12 @@ export const updateReportController = async (req, res) => {
             return res.status(404).json({ error: "Report not found or you are not authorized to edit it" });
         }
 
+        // Trigger Matchmaking in the background on Update
+        findMatchesForReport(updatedReport).catch(err => console.error("Background Matchmaking Error (Update):", err));
+
         res.status(200).json({
             success: true,
-            message: "Report updated successfully",
+            message: "Report updated successfully. AI is re-scanning for matches.",
             report: updatedReport
         });
 

@@ -1,6 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import pool from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import { Server } from "socket.io";
@@ -26,13 +28,14 @@ createMessageTable();
 createHandoffTable();
 createContactTable();
 
-dotenv.config();
-
 const app = express();
 const httpServer = createServer(app);
+
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: frontendUrl,
     methods: ["GET", "POST"]
   }
 });
@@ -53,7 +56,10 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 2017;
 
-app.use(cors());
+app.use(cors({
+  origin: frontendUrl,
+  credentials: true
+}));
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 

@@ -9,6 +9,7 @@ export const createMatchTable = async () => {
                 lost_report_id INT REFERENCES reports(id) ON DELETE CASCADE,
                 found_report_id INT REFERENCES reports(id) ON DELETE CASCADE,
                 similarity_score INT, -- percentage 0-100
+                match_reason TEXT,
                 status VARCHAR(20) DEFAULT 'pending', -- pending, verified, rejected
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(lost_report_id, found_report_id)
@@ -22,15 +23,16 @@ export const createMatchTable = async () => {
 };
 
 export const createMatch = async (matchData) => {
-    const { lost_report_id, found_report_id, similarity_score } = matchData;
+    const { lost_report_id, found_report_id, similarity_score, match_reason } = matchData;
     const query = `
-        INSERT INTO matches (lost_report_id, found_report_id, similarity_score)
-        VALUES ($1, $2, $3)
+        INSERT INTO matches (lost_report_id, found_report_id, similarity_score, match_reason)
+        VALUES ($1, $2, $3, $4)
         ON CONFLICT (lost_report_id, found_report_id) DO UPDATE 
-        SET similarity_score = EXCLUDED.similarity_score
+        SET similarity_score = EXCLUDED.similarity_score,
+            match_reason = EXCLUDED.match_reason
         RETURNING *;
     `;
-    const values = [lost_report_id, found_report_id, similarity_score];
+    const values = [lost_report_id, found_report_id, similarity_score, match_reason];
     const result = await pool.query(query, values);
     return result.rows[0];
 };

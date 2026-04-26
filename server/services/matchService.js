@@ -24,14 +24,35 @@ const fileToGenerativePart = (path, mimeType) => {
 };
 
 /**
- * Simple keyword-based similarity scoring (Fallback)
+ * String similarity using word intersection (Case-insensitive)
  */
-const calculateSimilarity = (str1, str2) => {
+const calculateStringSimilarity = (str1, str2) => {
     if (!str1 || !str2) return 0;
-    const words1 = str1.toLowerCase().split(/\s+/);
-    const words2 = str2.toLowerCase().split(/\s+/);
-    const intersection = words1.filter(word => words2.includes(word));
-    return (intersection.length * 2) / (words1.length + words2.length) * 100;
+    const s1 = str1.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const s2 = str2.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (s1.length === 0 || s2.length === 0) return 0;
+
+    const intersection = s1.filter(word => s2.includes(word));
+    return (intersection.length * 2) / (s1.length + s2.length) * 100;
+};
+
+/**
+ * Comprehensive text-based similarity scoring for reports
+ */
+const calculateSimilarity = (item1, item2) => {
+    if (!item1 || !item2) return 0;
+
+    const nameScore = calculateStringSimilarity(item1.item_name, item2.item_name);
+    const descScore = calculateStringSimilarity(item1.description, item2.description);
+    const idScore = calculateStringSimilarity(item1.identifiers || "", item2.identifiers || "");
+
+    // Weighted average: Name (40%), Description (40%), Identifiers (20%)
+    let totalTextScore = (nameScore * 0.4) + (descScore * 0.4) + (idScore * 0.2);
+
+    // Bonus for high name match
+    if (nameScore > 80) totalTextScore += 10;
+
+    return Math.min(totalTextScore, 100);
 };
 
 /**
@@ -44,29 +65,41 @@ const calculateAISimilarity = async (item1, item2) => {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `
-            You are a highly intelligent Lost and Found matching system with vision capabilities. 
-            Compare the following two reports (including images if provided) and determine if they are the same item.
+            You are a professional Lost and Found matching system. 
+            Compare these two reports and determine if they describe the EXACT SAME item.
             
-            Report 1 (Lost Item):
-            - Name: ${item1.item_name}
+            Report 1 (${item1.type.toUpperCase()}):
+            - Item Name: ${item1.item_name}
+            - Category: ${item1.category}
             - Description: ${item1.description}
             - Identifiers: ${item1.identifiers || "None"}
             
-            Report 2 (Found Item):
-            - Name: ${item2.item_name}
+            Report 2 (${item2.type.toUpperCase()}):
+            - Item Name: ${item2.item_name}
+            - Category: ${item2.category}
             - Description: ${item2.description}
             - Identifiers: ${item2.identifiers || "None"}
             
-            INSTRUCTIONS:
-            1. If images are provided, analyze colors, brands, shapes, and unique damage/stickers.
-            2. Be strict: If the descriptions match but the images show different colors or models, give a low score.
-            3. Return ONLY a JSON object with:
-               "score": (a number between 0 and 100),
-               "reason": "a very short explanation (max 15 words)"
+            SCORING RULES:
+            1. 90-100: Definite match. Everything (brand, model, color, unique marks) aligns perfectly.
+            2. 70-89: Highly likely match. Minor differences in description but core item is clearly the same.
+            3. 40-69: Possible match. Similar item but lacking unique proof.
+            4. 0-39: Unlikely match or different items.
+            
+            VISUAL ANALYSIS (If images provided):
+            - Compare brand logos, specific wear/scratches, shapes, and exact color shades.
+            - If images CLEARLY show different brands or distinct shapes, the score MUST be below 20.
+            - Lighting differences are common; be flexible with "dark blue" vs "black" unless the image proves otherwise.
+            
+            Return ONLY a JSON object:
+            {
+                "score": number (0-100),
+                "reason": "short explanation (max 15 words)"
+            }
         `;
 
         const visualParts = [];
-        
+
         // Add images if they exist
         if (item1.image_url) {
             const imgPath = path.join(process.cwd(), "uploads", item1.image_url);
@@ -82,7 +115,7 @@ const calculateAISimilarity = async (item1, item2) => {
         const result = await model.generateContent([prompt, ...visualParts]);
         const response = await result.response;
         const text = response.text();
-        
+
         // Extract JSON from response
         const jsonMatch = text.match(/\{.*\}/s);
         if (jsonMatch) {
@@ -110,11 +143,12 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 export const findMatchesForReport = async (newReport) => {
     try {
-        const { id, type, category, item_name, location, user_id, lat, lng } = newReport;
+        const { id, type, category, item_name, location, user_id, lat, lng, date: reportDate } = newReport;
 
-        // Find potential candidates of the opposite type and same category
         const oppositeType = type === 'lost' ? 'found' : 'lost';
 
+        // We removed the strict date condition to catch items that might have been reported with slightly wrong dates.
+        // Instead, we'll penalize date mismatches in the scoring logic.
         const query = `
             SELECT r.*, u.email, u.phone, u.name as user_name
             FROM reports r
@@ -137,38 +171,61 @@ export const findMatchesForReport = async (newReport) => {
             if (distance !== null) {
                 if (distance <= 5) locationScore = 100;
                 else if (distance <= 20) locationScore = 80;
-                else if (distance <= 50) locationScore = 40;
-                else continue; 
+                else if (distance <= 50) locationScore = 50;
+                else if (distance <= 100) locationScore = 20;
+                else continue; // Still skip if too far
             } else {
-                locationScore = calculateSimilarity(location, candidate.location);
+                locationScore = calculateStringSimilarity(location, candidate.location);
             }
 
-            // 2. Intelligence Layer (AI Text + Vision)
+            // 2. Date Scoring (Soft Filter)
+            let datePenalty = 0;
+            const d1 = new Date(reportDate);
+            const d2 = new Date(candidate.date);
+            const diffDays = Math.abs(d1 - d2) / (1000 * 60 * 60 * 24);
+
+            // Logic: Lost item should be found AFTER it was lost. 
+            // If found BEFORE, it's likely not the same item, unless dates are messy.
+            if (type === 'lost' && d2 < d1) {
+                if (diffDays > 3) datePenalty = 30; // Significant penalty if found more than 3 days before lost
+                else datePenalty = 10;
+            } else if (type === 'found' && d2 > d1) {
+                if (diffDays > 3) datePenalty = 30;
+                else datePenalty = 10;
+            }
+
+            // 3. Intelligence Layer (AI Text + Vision)
             let totalSimilarity = 0;
             let matchReason = "Keyword match found";
 
             const aiResult = await calculateAISimilarity(newReport, candidate);
 
             if (aiResult && aiResult.score !== undefined) {
-                totalSimilarity = Math.round((aiResult.score * 0.8) + (locationScore * 0.2));
+                // AI Score is primary (80%), Location is secondary (20%)
+                totalSimilarity = Math.round((aiResult.score * 0.85) + (locationScore * 0.15));
                 matchReason = aiResult.reason;
             } else {
-                const nameSimilarity = calculateSimilarity(item_name, candidate.item_name);
-                totalSimilarity = Math.round((nameSimilarity * 0.7) + (locationScore * 0.3));
+                const textSimilarity = calculateSimilarity(newReport, candidate);
+                totalSimilarity = Math.round((textSimilarity * 0.7) + (locationScore * 0.3));
             }
 
-            // 3. Process the Match
-            if (totalSimilarity >= 40) { 
+            // Apply Date Penalty
+            totalSimilarity = Math.max(0, totalSimilarity - datePenalty);
+
+            // 4. Process the Match
+            // Increase threshold slightly for professional feel, but ensure high quality
+            if (totalSimilarity >= 45) {
                 const lost_report_id = type === 'lost' ? id : candidate.id;
                 const found_report_id = type === 'found' ? id : candidate.id;
 
                 const match = await createMatch({
                     lost_report_id,
                     found_report_id,
-                    similarity_score: totalSimilarity
+                    similarity_score: totalSimilarity,
+                    match_reason: matchReason
                 });
 
-                const notificationMessage = `[FindIt AI] ${matchReason} (${totalSimilarity}% Match). Check your dashboard!`;
+                const notificationMessage = `[Match Found] ${totalSimilarity}% - ${matchReason}`;
 
                 await createNotification({
                     user_id: candidate.user_id,
