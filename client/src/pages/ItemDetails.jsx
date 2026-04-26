@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import BASE_URL from "../config.js";
 import toast from "react-hot-toast";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
@@ -32,6 +32,8 @@ export default function ItemDetails() {
     const [loading, setLoading] = useState(true);
     const [matches, setMatches] = useState([]);
     const navigate = useNavigate();
+    const location = useLocation();
+    const context = location.state?.context;
 
     useEffect(() => {
         const fetchItemDetails = async () => {
@@ -211,12 +213,20 @@ export default function ItemDetails() {
                                                     </div>
                                                 </div>
                                                 {/* Button Style Matched to Navbar (Pink bg, Black text, rectangular, no rounding) */}
-                                                <button
-                                                    onClick={() => navigate("/dashboard", { state: { activeTab: 'chat', matchId: match.match_id } })}
-                                                    className="w-full sm:w-auto bg-[#FF2E7E] text-[#0A0A0A] px-6 py-3 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-pink-600 transition-all shadow-[0_0_15px_rgba(255,46,126,0.2)] hover:shadow-[0_0_25px_rgba(255,46,126,0.4)]"
-                                                >
-                                                    START CHAT
-                                                </button>
+                                                <div className="flex flex-col sm:flex-row gap-2">
+                                                    <button
+                                                        onClick={() => navigate(`/match-details/${match.match_id}`)}
+                                                        className="w-full sm:w-auto border border-[#FF2E7E]/30 text-[#FF2E7E] px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-[#FF2E7E]/10 transition-all"
+                                                    >
+                                                        VIEW COMPARISON
+                                                    </button>
+                                                    <button
+                                                        onClick={() => navigate("/dashboard", { state: { activeTab: 'chat', matchId: match.match_id } })}
+                                                        className="w-full sm:w-auto bg-[#FF2E7E] text-[#0A0A0A] px-6 py-3 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-pink-600 transition-all shadow-[0_0_15px_rgba(255,46,126,0.2)] hover:shadow-[0_0_25px_rgba(255,46,126,0.4)]"
+                                                    >
+                                                        START CHAT
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))
                                     )}
@@ -249,12 +259,30 @@ export default function ItemDetails() {
 
                             {/* Final Actions */}
                             <div className="flex flex-wrap items-center gap-6 pt-10 border-t border-white/10">
-                                <button
-                                    onClick={() => navigate("/report-item", { state: { editItem: item } })}
-                                    className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
-                                >
-                                    EDIT REPORT
-                                </button>
+                                {context === 'dashboard' ? (
+                                    <button
+                                        onClick={() => navigate("/report-item", { state: { editItem: item } })}
+                                        className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
+                                    >
+                                        EDIT REPORT
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => navigate("/report-item", { 
+                                            state: { 
+                                                reportType: item.type === 'lost' ? 'found' : 'lost',
+                                                // Optional: pre-fill some info to make it easier for the finder
+                                                initialData: {
+                                                    item_name: item.item_name,
+                                                    category: item.category
+                                                }
+                                            } 
+                                        })}
+                                        className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
+                                    >
+                                        REPORT ITEM
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => {
                                         navigator.clipboard.writeText(window.location.href);

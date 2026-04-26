@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const links = ["Privacy", "Terms", "Support"];
 
@@ -25,13 +26,13 @@ export default function Footer() {
           {/* Minimal Links */}
           <div className="flex gap-6">
             {links.map((link) => (
-              <a
+              <Link
                 key={link}
-                href="#"
+                to={`/${link.toLowerCase()}`}
                 className="text-gray-400 text-sm hover:text-white transition duration-300"
               >
                 {link}
-              </a>
+              </Link>
             ))}
           </div>
 

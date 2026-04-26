@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import BASE_URL from "../config.js";
 import toast from "react-hot-toast";
+import { useSocket } from "../contexts/SocketContext";
 
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState("dashboard");
@@ -18,7 +19,12 @@ export default function Dashboard() {
 
     const [handoffCode, setHandoffCode] = useState(null);
     const [inputCode, setInputCode] = useState("");
-    const [isVerifying, setIsVerifying] = useState(false);
+    const isVerifyingState = useState(false);
+    const isVerifying = isVerifyingState[0];
+    const setIsVerifying = isVerifyingState[1];
+    
+    const socketContext = useSocket();
+    const { socket, unreadCount, notifications, markAsRead, clearNotifications } = socketContext;
 
     // Recovery details state
     const [selectedItemId, setSelectedItemId] = useState(null);
@@ -97,7 +103,6 @@ export default function Dashboard() {
     }, [activeTab, userMatches, selectedMatch, location.state]);
 
     useEffect(() => {
-        let interval;
         if (activeTab === "chat" && selectedMatch) {
             const fetchMsgs = async () => {
                 const token = localStorage.getItem("token");
@@ -112,10 +117,35 @@ export default function Dashboard() {
                 }
             };
             fetchMsgs();
-            interval = setInterval(fetchMsgs, 3000);
         }
-        return () => clearInterval(interval);
     }, [activeTab, selectedMatch]);
+
+    // Real-time socket listener for chat
+    useEffect(() => {
+        if (socket && selectedMatch) {
+            const handleNewMessage = (data) => {
+                // Only add to chat if it's for the currently open match
+                if (Number(data.match_id) === Number(selectedMatch.match_id)) {
+                    setChatMessages(prev => {
+                        // Avoid duplicates if polling/fetching happened at the same time
+                        if (prev.find(m => m.id === data.id)) return prev;
+                        return [...prev, {
+                            ...data,
+                            created_at: new Date().toISOString()
+                        }];
+                    });
+
+                    // Play subtle sound
+                    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                    audio.volume = 0.2;
+                    audio.play().catch(() => { });
+                }
+            };
+
+            socket.on("new_message", handleNewMessage);
+            return () => socket.off("new_message", handleNewMessage);
+        }
+    }, [socket, selectedMatch]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -134,7 +164,10 @@ export default function Dashboard() {
                 headers: { "Authorization": `Bearer ${token}` },
                 body: formData
             });
+            const data = await res.json();
             if (res.ok) {
+                // Locally add the message for instant feedback
+                setChatMessages(prev => [...prev, data.message]);
                 setNewMessage("");
                 setSelectedFile(null);
             }
@@ -190,7 +223,11 @@ export default function Dashboard() {
     };
 
     const handleViewItemDetails = (itemId) => {
-        navigate(`/item/${itemId}`);
+        navigate(`/item/${itemId}`, { state: { context: 'dashboard' } });
+    };
+
+    const handleViewMatchDetails = (matchId) => {
+        navigate(`/match-details/${matchId}`);
     };
 
 
@@ -205,7 +242,7 @@ export default function Dashboard() {
                         </div>
                         <h2 className="text-sm font-bold">{user?.name || "User"}</h2>
                     </div>
-                    <button 
+                    <button
                         onClick={() => setIsSidebarOpen(true)}
                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-[#FF2E7E]"
                     >
@@ -217,7 +254,7 @@ export default function Dashboard() {
 
                     {/* Sidebar Overlay (Mobile Only) */}
                     {isSidebarOpen && (
-                        <div 
+                        <div
                             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[998] lg:hidden animate-in fade-in duration-300"
                             onClick={() => setIsSidebarOpen(false)}
                         />
@@ -230,7 +267,7 @@ export default function Dashboard() {
                         p-6 flex flex-col
                     `}>
                         {/* Close button (Mobile Only) */}
-                        <button 
+                        <button
                             onClick={() => setIsSidebarOpen(false)}
                             className="lg:hidden absolute top-6 right-6 text-gray-500 hover:text-white"
                         >
@@ -249,7 +286,11 @@ export default function Dashboard() {
                                         Trust Score: {user?.trust_score || 0}
                                     </p>
                                 </div>
-                                <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-3">Verified Member</p>
+                                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[3px] mt-3">
+                                    {user?.trust_score >= 100 ? "Elite Samaritan" :
+                                        user?.trust_score >= 50 ? "Guardian Finder" :
+                                            user?.trust_score >= 10 ? "Verified Hero" : "Novice Member"}
+                                </p>
                             </div>
                         </div>
 
@@ -517,7 +558,7 @@ export default function Dashboard() {
                                                 </div>
                                                 <div className="flex gap-4">
                                                     <button onClick={() => { setSelectedMatch(match); setActiveTab('chat'); }} disabled={match.match_status === 'resolved'} className={`px-6 py-3 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${match.match_status === 'resolved' ? "bg-gray-800 text-gray-400" : "bg-[#FF2E7E] text-white hover:bg-[#C30052]"}`}>Relay</button>
-                                                    <button onClick={() => handleViewItemDetails(match.matched_report_id)} className="px-6 py-3 border border-white/10 text-xs font-bold uppercase rounded-xl hover:text-white transition-all text-center">Details</button>
+                                                    <button onClick={() => handleViewMatchDetails(match.match_id)} className="px-6 py-3 border border-white/10 text-xs font-bold uppercase rounded-xl hover:text-white transition-all text-center">Details</button>
                                                 </div>
                                             </div>
                                         ))}

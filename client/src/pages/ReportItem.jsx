@@ -95,6 +95,14 @@ export default function ReportItem() {
                 setImagePreview(`${BASE_URL}/uploads/${item.image_url}`);
             }
         }
+        if (location.state?.initialData) {
+            const initial = location.state.initialData;
+            setFormData(prev => ({
+                ...prev,
+                item_name: initial.item_name || prev.item_name,
+                category: initial.category || prev.category
+            }));
+        }
     }, [location.state]);
 
     const [image, setImage] = useState(null);
@@ -265,10 +273,8 @@ export default function ReportItem() {
             const result = await response.json();
 
             if (response.ok) {
-                toast.success(result.message || (editId ? "Report updated successfully!" : "Report submitted successfully!"));
-                setTimeout(() => {
-                    navigate(editId ? `/item/${editId}` : "/dashboard");
-                }, 2000);
+                toast.success(result.message || (editId ? "Report updated successfully!" : "Report submitted successfully! AI is scanning for matches."));
+                navigate(editId ? `/item/${editId}` : "/dashboard");
             } else {
                 throw new Error(result.error || "Failed to process report");
             }

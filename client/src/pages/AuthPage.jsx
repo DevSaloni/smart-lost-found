@@ -61,7 +61,7 @@ export default function AuthPage() {
                 } else {
                     localStorage.setItem("token", result.token);
                     toast.success("Login successful!");
-                    setTimeout(() => { window.location.href = "/"; }, 2000);
+                    setTimeout(() => { navigate("/"); }, 2000);
                 }
             } catch (err) {
                 toast.error(err.message);
@@ -108,7 +108,7 @@ export default function AuthPage() {
 
             localStorage.setItem("token", tempToken);
             toast.success("Account setup complete!");
-            setTimeout(() => { window.location.href = "/"; }, 2000);
+            setTimeout(() => { navigate("/"); }, 2000);
         } catch (err) {
             toast.error(err.message);
         } finally {
@@ -178,7 +178,7 @@ export default function AuthPage() {
             } else {
                 localStorage.setItem("token", result.token);
                 toast.success("Login successful! Redirecting...");
-                setTimeout(() => { window.location.href = "/"; }, 2000);
+                setTimeout(() => { navigate("/"); }, 2000);
             }
         } catch (err) {
             console.error("DEBUG - Auth Error:", err);

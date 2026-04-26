@@ -48,7 +48,7 @@ function AppContent() {
 
 function App() {
     return (
-        <GoogleOAuthProvider clientId="136383796213-68mi7lq95c90iug44tuoq5a4jjkhjct4.apps.googleusercontent.com">
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
             <AuthProvider>
                 <AppContent />
             </AuthProvider>
