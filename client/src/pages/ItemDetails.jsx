@@ -68,6 +68,7 @@ export default function ItemDetails() {
         fetchItemDetails();
     }, [id, navigate]);
 
+
     if (loading) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center">
@@ -75,7 +76,6 @@ export default function ItemDetails() {
             </div>
         );
     }
-
     if (!item) return null;
 
     return (
@@ -259,29 +259,38 @@ export default function ItemDetails() {
 
                             {/* Final Actions */}
                             <div className="flex flex-wrap items-center gap-6 pt-10 border-t border-white/10">
-                                {context === 'dashboard' ? (
-                                    <button
-                                        onClick={() => navigate("/report-item", { state: { editItem: item } })}
-                                        className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
-                                    >
-                                        EDIT REPORT
-                                    </button>
+                                {item.status === 'resolved' ? (
+                                    <div className="w-full p-6 bg-blue-500/10 border border-blue-500/30 rounded-xl text-center">
+                                        <p className="text-sm font-bold text-blue-500 uppercase tracking-widest">
+                                            ✓ This case has been successfully resolved
+                                        </p>
+                                    </div>
                                 ) : (
-                                    <button
-                                        onClick={() => navigate("/report-item", { 
-                                            state: { 
-                                                reportType: item.type === 'lost' ? 'found' : 'lost',
-                                                // Optional: pre-fill some info to make it easier for the finder
-                                                initialData: {
-                                                    item_name: item.item_name,
-                                                    category: item.category
-                                                }
-                                            } 
-                                        })}
-                                        className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
-                                    >
-                                        REPORT ITEM
-                                    </button>
+                                    <>
+                                        {context === 'dashboard' ? (
+                                            <button
+                                                onClick={() => navigate("/report-item", { state: { editItem: item } })}
+                                                className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
+                                            >
+                                                EDIT REPORT
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => navigate("/report-item", {
+                                                    state: {
+                                                        reportType: item.type === 'lost' ? 'found' : 'lost',
+                                                        initialData: {
+                                                            item_name: item.item_name,
+                                                            category: item.category
+                                                        }
+                                                    }
+                                                })}
+                                                className="bg-[#FF2E7E] text-[#050505] px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-pink-600 transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(255,46,126,0.2)] hover:shadow-[0_0_30px_rgba(255,46,126,0.4)]"
+                                            >
+                                                REPORT ITEM
+                                            </button>
+                                        )}
+                                    </>
                                 )}
                                 <button
                                     onClick={() => {

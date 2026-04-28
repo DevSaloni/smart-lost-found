@@ -142,8 +142,8 @@ export const verifyHandoffCode = async (req, res) => {
         // Mark reports as resolved
         await pool.query("UPDATE reports SET status = 'resolved' WHERE id IN (SELECT lost_report_id FROM matches WHERE id=$1 UNION SELECT found_report_id FROM matches WHERE id=$1)", [match_id]);
 
-        // Increase trust scores for both involved users (+10 points)
-        await pool.query("UPDATE users SET trust_score = trust_score + 10 WHERE id IN ($1, $2)", [handoff.owner_id, handoff.finder_id]);
+        // Increase trust score for the finder (+10 points)
+        await pool.query("UPDATE users SET trust_score = trust_score + 10 WHERE id = $1", [handoff.finder_id]);
 
         // Emit real-time socket event to the OWNER to refresh their dashboard
         io.to(`user_${handoff.owner_id}`).emit("handoff_completed", {

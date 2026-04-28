@@ -37,8 +37,8 @@ export default function MatchDetails() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center text-[#FF2E7E] font-bold uppercase tracking-widest animate-pulse">
-                Verifying Comparison...
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-[#FF2E7E]/20 border-t-[#FF2E7E] rounded-full animate-spin"></div>
             </div>
         );
     }

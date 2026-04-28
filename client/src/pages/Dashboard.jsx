@@ -22,7 +22,7 @@ export default function Dashboard() {
     const isVerifyingState = useState(false);
     const isVerifying = isVerifyingState[0];
     const setIsVerifying = isVerifyingState[1];
-    
+
     const socketContext = useSocket();
     const { socket, unreadCount, notifications, markAsRead, clearNotifications } = socketContext;
 
@@ -143,7 +143,31 @@ export default function Dashboard() {
             };
 
             socket.on("new_message", handleNewMessage);
-            return () => socket.off("new_message", handleNewMessage);
+            
+            socket.on("match_found", (data) => {
+                // Refetch matches and reports to ensure data is in sync with backend
+                const token = localStorage.getItem("token");
+                const refreshData = async () => {
+                    const reportsRes = await fetch(`${BASE_URL}/api/reports/my-reports`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    const reportsData = await reportsRes.json();
+                    if (reportsRes.ok) setUserReports(reportsData.reports);
+
+                    const matchesRes = await fetch(`${BASE_URL}/api/matches/user-matches`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    const matchesData = await matchesRes.json();
+                    if (matchesRes.ok) setUserMatches(matchesData.matches);
+                };
+                refreshData();
+                toast.success("AI found a new match for your report!", { icon: "🛰️" });
+            });
+
+            return () => {
+                socket.off("new_message", handleNewMessage);
+                socket.off("match_found");
+            };
         }
     }, [socket, selectedMatch]);
 
@@ -664,13 +688,13 @@ export default function Dashboard() {
                                                     </div>
 
                                                     <div className="p-6 bg-white/[0.02] border-t border-white/5">
-                                                        <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-4 p-2.5 bg-[#050505] border border-white/10 rounded-[32px] focus-within:border-[#FF2E7E]/50 transition-all group items-center">
+                                                        <form onSubmit={handleSendMessage} className={`max-w-4xl mx-auto flex gap-4 p-2.5 bg-[#050505] border border-white/10 rounded-[32px] focus-within:border-[#FF2E7E]/50 transition-all group items-center ${selectedMatch.match_status === 'resolved' ? 'opacity-50 pointer-events-none' : ''}`}>
                                                             <label className="w-12 h-12 flex items-center justify-center cursor-pointer hover:bg-white/5 rounded-2xl transition-all flex-shrink-0">
-                                                                <input type="file" className="hidden" onChange={e => setSelectedFile(e.target.files[0])} />
+                                                                <input type="file" className="hidden" onChange={e => setSelectedFile(e.target.files[0])} disabled={selectedMatch.match_status === 'resolved'} />
                                                                 <svg className={`w-5 h-5 transition-colors ${selectedFile ? 'text-[#FF2E7E]' : 'text-gray-500'}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                                                             </label>
-                                                            <input className="flex-1 bg-transparent px-2 text-[15px] outline-none placeholder:text-gray-700 font-medium h-full" placeholder="Transmit secure message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} />
-                                                            <button type="submit" className="w-12 h-12 flex items-center justify-center bg-gradient-to-tr from-[#FF2E7E] to-[#FF4B8B] text-white rounded-2xl shadow-[0_4px_15px_rgba(255,46,126,0.3)] hover:shadow-[0_6px_20px_rgba(255,46,126,0.4)] hover:scale-105 active:scale-95 transition-all flex-shrink-0 border border-white/10">
+                                                            <input className="flex-1 bg-transparent px-2 text-[15px] outline-none placeholder:text-gray-700 font-medium h-full" placeholder={selectedMatch.match_status === 'resolved' ? "Chat disabled for resolved cases" : "Transmit secure message..."} value={newMessage} onChange={e => setNewMessage(e.target.value)} disabled={selectedMatch.match_status === 'resolved'} />
+                                                            <button type="submit" disabled={selectedMatch.match_status === 'resolved'} className="w-12 h-12 flex items-center justify-center bg-gradient-to-tr from-[#FF2E7E] to-[#FF4B8B] text-white rounded-2xl shadow-[0_4px_15px_rgba(255,46,126,0.3)] hover:shadow-[0_6px_20px_rgba(255,46,126,0.4)] hover:scale-105 active:scale-95 transition-all flex-shrink-0 border border-white/10">
                                                                 <svg className="w-5 h-5 transform rotate-45 -mt-0.5 -mr-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7z" /></svg>
                                                             </button>
                                                         </form>

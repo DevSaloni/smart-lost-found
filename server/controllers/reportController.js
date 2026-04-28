@@ -131,6 +131,12 @@ export const updateReportController = async (req, res) => {
             lng
         };
 
+        // Check if report is already resolved
+        const currentReport = await getReportById(id);
+        if (currentReport && currentReport.status === 'resolved') {
+            return res.status(400).json({ error: "This report is already resolved and cannot be edited." });
+        }
+
         const updatedReport = await updateReport(id, req.user.id, reportData);
 
         if (!updatedReport) {

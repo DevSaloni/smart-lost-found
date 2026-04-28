@@ -227,6 +227,7 @@ export const findMatchesForReport = async (newReport) => {
 
                 const notificationMessage = `[Match Found] ${totalSimilarity}% - ${matchReason}`;
 
+                // 1. Notify the Candidate (Existing report owner)
                 await createNotification({
                     user_id: candidate.user_id,
                     report_id: candidate.id,
@@ -241,13 +242,45 @@ export const findMatchesForReport = async (newReport) => {
                     similarity: totalSimilarity
                 });
 
-                const method = candidate.alert_method ? candidate.alert_method.toLowerCase() : 'push';
-                if (method !== 'push') {
+                const candidateMethod = candidate.alert_method ? candidate.alert_method.toLowerCase() : 'push';
+                if (candidateMethod !== 'push') {
                     await sendExternalNotification(
                         { email: candidate.email, phone: candidate.phone, name: candidate.user_name },
                         notificationMessage,
                         candidate.alert_method
                     );
+                }
+
+                // 2. Notify the Creator (New report owner)
+                // Fetch creator details first
+                const { rows: creatorRows } = await pool.query("SELECT email, phone, name FROM users WHERE id = $1", [user_id]);
+                if (creatorRows.length > 0) {
+                    const creator = creatorRows[0];
+                    const creatorNotificationMessage = `[Match Found] We found a ${totalSimilarity}% match for your new ${type} report!`;
+                    
+                    await createNotification({
+                        user_id: user_id,
+                        report_id: id,
+                        type: 'match_found',
+                        message: creatorNotificationMessage
+                    });
+
+                    io.to(`user_${user_id}`).emit("match_found", {
+                        message: creatorNotificationMessage,
+                        report_id: id,
+                        match_id: match.id,
+                        similarity: totalSimilarity
+                    });
+
+                    // We use the same alert method as the report for simplicity, or default to push
+                    const creatorMethod = newReport.alert_method ? newReport.alert_method.toLowerCase() : 'push';
+                    if (creatorMethod !== 'push') {
+                        await sendExternalNotification(
+                            creator,
+                            creatorNotificationMessage,
+                            newReport.alert_method
+                        );
+                    }
                 }
 
                 matches.push(match);

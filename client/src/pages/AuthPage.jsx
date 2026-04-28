@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useGoogleLogin } from '@react-oauth/google';
 import BASE_URL from "../config.js";
 
 export default function AuthPage() {
+    const navigate = useNavigate();
     const [tab, setTab] = useState("signup");
     const [formData, setFormData] = useState({
         name: "",
@@ -173,8 +175,9 @@ export default function AuthPage() {
             }
 
             if (tab === "signup") {
-                toast.success(result.message, { duration: 5000 });
+                toast.success(result.message || "Signup successful! Please sign in.", { duration: 5000 });
                 setFormData({ name: "", email: "", password: "", phone: "", confirmPassword: "" });
+                setTab("signin");
             } else {
                 localStorage.setItem("token", result.token);
                 toast.success("Login successful! Redirecting...");
@@ -227,7 +230,7 @@ export default function AuthPage() {
                 </div>
 
                 {/* RIGHT SIDE CARD */}
-                <div className="bg-[#0c0c0c] border border-white/10 rounded-none p-6 md:p-10 shadow-2xl w-full max-w-md mx-auto lg:max-w-none">
+                <div className="bg-[#0c0c0c] border border-white/10 rounded-[32px] p-6 md:p-10 shadow-2xl w-full max-w-md mx-auto lg:max-w-none">
 
                     {/* Tabs */}
                     {!showPhoneInput && (
@@ -267,14 +270,14 @@ export default function AuthPage() {
                                         value={formData.phone}
                                         onChange={handleChange}
                                         placeholder="+1234567890"
-                                        className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                        className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-xl text-white text-sm focus:border-[#FF2E7E] outline-none"
                                         required
                                     />
                                 </div>
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className={`w-full py-3 mt-2 bg-[#FF2E7E] text-black text-[11px] font-bold tracking-widest rounded-none shadow-[0_4px_15px_rgba(255,46,126,0.2)] hover:bg-pink-600 transition uppercase ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    className={`w-full py-3 mt-2 bg-[#FF2E7E] text-black text-[11px] font-bold tracking-widest rounded-xl shadow-[0_4px_15px_rgba(255,46,126,0.2)] hover:bg-pink-600 transition uppercase ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                                 >
                                     {loading ? "SAVING..." : "COMPLETE ACCOUNT"}
                                 </button>
@@ -292,7 +295,7 @@ export default function AuthPage() {
                             {/* Google Button */}
                             <button
                                 onClick={() => loginWithGoogle()}
-                                className="w-full flex items-center justify-center gap-3 py-3 bg-white text-black text-[11px] font-bold tracking-widest rounded-lg hover:bg-gray-200 transition mb-4 uppercase"
+                                className="w-full flex items-center justify-center gap-3 py-3 bg-white text-black text-[11px] font-bold tracking-widest rounded-xl hover:bg-gray-200 transition mb-4 uppercase"
                             >
                                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                                     <path
@@ -334,7 +337,7 @@ export default function AuthPage() {
                                                 value={formData.name}
                                                 onChange={handleChange}
                                                 placeholder="Your full name"
-                                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-xl text-white text-sm focus:border-[#FF2E7E] outline-none"
                                             />
                                         </div>
                                     )}
@@ -347,7 +350,7 @@ export default function AuthPage() {
                                             value={formData.email}
                                             onChange={handleChange}
                                             placeholder="you@example.com"
-                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-lg text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-xl text-white text-sm focus:border-[#FF2E7E] outline-none"
                                         />
                                     </div>
                                 </div>
@@ -362,7 +365,7 @@ export default function AuthPage() {
                                                 value={formData.phone}
                                                 onChange={handleChange}
                                                 placeholder="+1234567890"
-                                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                                className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-xl text-white text-sm focus:border-[#FF2E7E] outline-none"
                                             />
                                         </div>
                                     )}
@@ -375,7 +378,7 @@ export default function AuthPage() {
                                             value={formData.password}
                                             onChange={handleChange}
                                             placeholder="••••••••"
-                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-xl text-white text-sm focus:border-[#FF2E7E] outline-none"
                                         />
                                     </div>
                                 </div>
@@ -389,7 +392,7 @@ export default function AuthPage() {
                                             value={formData.confirmPassword}
                                             onChange={handleChange}
                                             placeholder="••••••••"
-                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-none text-white text-sm focus:border-[#FF2E7E] outline-none"
+                                            className="w-full mt-1.5 p-2.5 bg-black border border-white/5 rounded-xl text-white text-sm focus:border-[#FF2E7E] outline-none"
                                         />
                                     </div>
                                 )}
@@ -397,7 +400,7 @@ export default function AuthPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className={`w-full py-3 mt-2 bg-[#FF2E7E] text-black text-[11px] font-bold tracking-widest rounded-lg shadow-[0_4px_15px_rgba(255,46,126,0.2)] hover:bg-pink-600 transition uppercase ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    className={`w-full py-3 mt-2 bg-[#FF2E7E] text-black text-[11px] font-bold tracking-widest rounded-xl shadow-[0_4px_15px_rgba(255,46,126,0.2)] hover:bg-pink-600 transition uppercase ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                                 >
                                     {loading ? "PROCESSING..." : (tab === "signin" ? "SIGN IN" : "CREATE ACCOUNT")}
                                 </button>
