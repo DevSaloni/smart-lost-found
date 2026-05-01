@@ -72,6 +72,13 @@ export default function ReportItem() {
     const [editId, setEditId] = useState(null);
 
     React.useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Please sign in to file a report");
+            navigate("/auth", { state: { from: "/report-item" } });
+            return;
+        }
+
         if (location.state?.reportType) {
             setReportType(location.state.reportType);
         }
