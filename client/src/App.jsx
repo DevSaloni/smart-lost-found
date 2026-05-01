@@ -53,17 +53,13 @@ function App() {
         console.warn("VITE_GOOGLE_CLIENT_ID is missing. Google Login will not work. Please add it to your .env file or hosting environment variables.");
     }
 
-    const content = (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
-    );
-
-    return clientId ? (
-        <GoogleOAuthProvider clientId={clientId}>
-            {content}
+    return (
+        <GoogleOAuthProvider clientId={clientId || "missing-client-id"}>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
         </GoogleOAuthProvider>
-    ) : content;
+    );
 }
 
 export default App;

@@ -32,6 +32,7 @@ export default function AuthPage() {
 
     const [showPhoneInput, setShowPhoneInput] = useState(false);
     const [tempToken, setTempToken] = useState("");
+    const from = location.state?.from || "/";
 
     const loginWithGoogle = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
@@ -63,7 +64,7 @@ export default function AuthPage() {
                 } else {
                     localStorage.setItem("token", result.token);
                     toast.success("Login successful!");
-                    setTimeout(() => { navigate("/"); }, 2000);
+                    setTimeout(() => { navigate(from); }, 2000);
                 }
             } catch (err) {
                 toast.error(err.message);
@@ -110,7 +111,7 @@ export default function AuthPage() {
 
             localStorage.setItem("token", tempToken);
             toast.success("Account setup complete!");
-            setTimeout(() => { navigate("/"); }, 2000);
+            setTimeout(() => { navigate(from); }, 2000);
         } catch (err) {
             toast.error(err.message);
         } finally {
@@ -181,7 +182,7 @@ export default function AuthPage() {
             } else {
                 localStorage.setItem("token", result.token);
                 toast.success("Login successful! Redirecting...");
-                setTimeout(() => { navigate("/"); }, 2000);
+                setTimeout(() => { navigate(from); }, 2000);
             }
         } catch (err) {
             console.error("DEBUG - Auth Error:", err);
