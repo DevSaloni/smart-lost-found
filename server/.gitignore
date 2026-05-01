@@ -6,6 +6,7 @@ node_modules/
 .env.test
 .env.production
 .env.local
+*.local
 
 # Build files
 dist/
@@ -24,3 +25,6 @@ coverage/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Uploads
+uploads/
