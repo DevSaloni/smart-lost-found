@@ -39,8 +39,10 @@ export default function Browse() {
                 setLoading(true);
                 const queryParams = new URLSearchParams();
 
-                // Force Browse page to ONLY show 'lost' items to maintain professional focus
-                queryParams.append("type", "lost");
+                // Allow Browse page to show all items by default, or filter by type if needed
+                if (activeQuickFilter !== "ALL" && !quickFilters.includes(activeQuickFilter)) {
+                    queryParams.append("type", activeQuickFilter.toLowerCase());
+                }
 
                 if (activeQuickFilter !== "ALL") {
                     queryParams.append("category", activeQuickFilter);
@@ -241,7 +243,7 @@ export default function Browse() {
                                     <div className="flex-1 flex items-center justify-center py-4 group-hover:scale-110 transition-transform duration-500">
                                         {report.image_url ? (
                                             <div className="w-full h-32 rounded-[20px] overflow-hidden border border-white/10 shadow-2xl">
-                                                <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" alt={report.item_name} />
+                                                <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" alt={report.item_name} />
                                             </div>
                                         ) : (
                                             <span className="text-6xl drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{getCategoryIcon(report.category)}</span>

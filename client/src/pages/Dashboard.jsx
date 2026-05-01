@@ -19,9 +19,7 @@ export default function Dashboard() {
 
     const [handoffCode, setHandoffCode] = useState(null);
     const [inputCode, setInputCode] = useState("");
-    const isVerifyingState = useState(false);
-    const isVerifying = isVerifyingState[0];
-    const setIsVerifying = isVerifyingState[1];
+    const [isVerifying, setIsVerifying] = useState(false);
 
     const socketContext = useSocket();
     const { socket, unreadCount, notifications, markAsRead, clearNotifications } = socketContext;
@@ -79,7 +77,7 @@ export default function Dashboard() {
         };
 
         fetchData();
-    }, [navigate, location.state]);
+    }, [navigate, location.state?.activeTab]);
 
     const lastProcessedMatchId = React.useRef(null);
 
@@ -92,7 +90,7 @@ export default function Dashboard() {
                 const target = userMatches.find(m => Number(m.match_id) === Number(stateMatchId));
                 if (target) {
                     setSelectedMatch(target);
-                    lastProcessedMatchId.current = stateMatchId;
+                    lastProcessedMatchId.current = Number(stateMatchId);
                 }
             }
             // Fallback: If no match is selected yet, pick the first one
@@ -100,7 +98,7 @@ export default function Dashboard() {
                 setSelectedMatch(userMatches[0]);
             }
         }
-    }, [activeTab, userMatches, selectedMatch, location.state]);
+    }, [activeTab, userMatches, selectedMatch, location.state?.matchId]);
 
     useEffect(() => {
         if (activeTab === "chat" && selectedMatch) {
@@ -122,54 +120,55 @@ export default function Dashboard() {
 
     // Real-time socket listener for chat
     useEffect(() => {
-        if (socket && selectedMatch) {
-            const handleNewMessage = (data) => {
-                // Only add to chat if it's for the currently open match
-                if (Number(data.match_id) === Number(selectedMatch.match_id)) {
-                    setChatMessages(prev => {
-                        // Avoid duplicates if polling/fetching happened at the same time
-                        if (prev.find(m => m.id === data.id)) return prev;
-                        return [...prev, {
-                            ...data,
-                            created_at: new Date().toISOString()
-                        }];
-                    });
+        if (!socket) return;
 
-                    // Play subtle sound
-                    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                    audio.volume = 0.2;
-                    audio.play().catch(() => { });
-                }
+        const handleNewMessage = (data) => {
+            // Only add to chat if it's for the currently open match
+            if (selectedMatch && Number(data.match_id) === Number(selectedMatch.match_id)) {
+                setChatMessages(prev => {
+                    // Avoid duplicates
+                    if (prev.find(m => m.id === data.id)) return prev;
+                    return [...prev, {
+                        ...data,
+                        created_at: new Date().toISOString()
+                    }];
+                });
+
+                // Play subtle sound
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.volume = 0.2;
+                audio.play().catch(() => { });
+            }
+        };
+
+        const handleMatchFound = (data) => {
+            // Refetch matches and reports
+            const token = localStorage.getItem("token");
+            const refreshData = async () => {
+                const reportsRes = await fetch(`${BASE_URL}/api/reports/my-reports`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const reportsData = await reportsRes.json();
+                if (reportsRes.ok) setUserReports(reportsData.reports);
+
+                const matchesRes = await fetch(`${BASE_URL}/api/matches/user-matches`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const matchesData = await matchesRes.json();
+                if (matchesRes.ok) setUserMatches(matchesData.matches);
             };
+            refreshData();
+            toast.success("AI found a new match for your report!", { icon: "🛰️" });
+        };
 
-            socket.on("new_message", handleNewMessage);
-            
-            socket.on("match_found", (data) => {
-                // Refetch matches and reports to ensure data is in sync with backend
-                const token = localStorage.getItem("token");
-                const refreshData = async () => {
-                    const reportsRes = await fetch(`${BASE_URL}/api/reports/my-reports`, {
-                        headers: { "Authorization": `Bearer ${token}` }
-                    });
-                    const reportsData = await reportsRes.json();
-                    if (reportsRes.ok) setUserReports(reportsData.reports);
+        socket.on("new_message", handleNewMessage);
+        socket.on("match_found", handleMatchFound);
 
-                    const matchesRes = await fetch(`${BASE_URL}/api/matches/user-matches`, {
-                        headers: { "Authorization": `Bearer ${token}` }
-                    });
-                    const matchesData = await matchesRes.json();
-                    if (matchesRes.ok) setUserMatches(matchesData.matches);
-                };
-                refreshData();
-                toast.success("AI found a new match for your report!", { icon: "🛰️" });
-            });
-
-            return () => {
-                socket.off("new_message", handleNewMessage);
-                socket.off("match_found");
-            };
-        }
-    }, [socket, selectedMatch]);
+        return () => {
+            socket.off("new_message", handleNewMessage);
+            socket.off("match_found", handleMatchFound);
+        };
+    }, [socket, selectedMatch?.match_id]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -380,7 +379,7 @@ export default function Dashboard() {
                                                 <div key={i} className="p-8 flex items-center justify-between hover:bg-white/[0.02] transition-all group">
                                                     <div className="flex items-center gap-6">
                                                         <div className="w-14 h-14 bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-inner">
-                                                            {report.image_url ? <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
+                                                            {report.image_url ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
                                                         </div>
                                                         <div>
                                                             <h4 className="text-lg font-bold text-white mb-0.5">{report.item_name}</h4>
@@ -412,7 +411,7 @@ export default function Dashboard() {
                                                             <td className="px-6 py-4">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="w-10 h-10 bg-white/5 rounded-lg overflow-hidden border border-white/5 flex-shrink-0">
-                                                                        {report.image_url ? <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                                                                        {report.image_url ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
                                                                     </div>
                                                                     <span className="text-xs font-bold text-white truncate max-w-[120px]">{report.item_name}</span>
                                                                 </div>
@@ -472,9 +471,9 @@ export default function Dashboard() {
                                                     <div key={i} className="p-8 flex items-center justify-between hover:bg-white/[0.02] transition-all group relative overflow-hidden">
                                                         <div className="absolute top-0 left-0 w-1 h-full bg-[#FF2E7E] opacity-0 group-hover:opacity-100 transition-all shadow-[0_0_15px_rgba(255,46,126,0.5)]"></div>
                                                         <div className="flex items-center gap-8">
-                                                            <div className="w-20 h-20 bg-white/5 rounded-3xl overflow-hidden border border-white/10 shadow-inner group-hover:scale-105 transition-transform duration-500">
+                                                            <div className="w-20 h-20 bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-inner flex-shrink-0">
                                                                 {report.image_url ? (
-                                                                    <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" />
+                                                                    <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" />
                                                                 ) : (
                                                                     <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-white/5 to-transparent">📦</div>
                                                                 )}
@@ -534,7 +533,7 @@ export default function Dashboard() {
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="w-10 h-10 bg-white/5 rounded-lg overflow-hidden border border-white/5 flex-shrink-0">
-                                                                            {report.image_url ? <img src={`${BASE_URL}/uploads/${report.image_url}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                                                                            {report.image_url ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
                                                                         </div>
                                                                         <div className="flex flex-col">
                                                                             <span className="text-[12px] font-bold text-white truncate max-w-[150px]">{report.item_name}</span>
@@ -570,7 +569,7 @@ export default function Dashboard() {
                                         {userMatches.length === 0 ? <div className="p-24 text-center text-gray-700">Awaiting match verification.</div> : userMatches.map((match, i) => (
                                             <div key={i} className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-10 group hover:border-[#FF2E7E]/40 transition-all">
                                                 <div className="w-32 h-32 bg-white/5 rounded-2xl overflow-hidden shadow-2xl relative border border-white/5">
-                                                    {match.matched_image ? <img src={`${BASE_URL}/uploads/${match.matched_image}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                                                    {match.matched_image ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(match.matched_image)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
                                                 </div>
                                                 <div className="flex-1 text-center md:text-left">
                                                     <h3 className="text-xl font-bold mb-1 text-white">{match.matched_item}</h3>
@@ -594,7 +593,7 @@ export default function Dashboard() {
                             {activeTab === "chat" && (
                                 <div className="h-full flex flex-col animate-in zoom-in-95 duration-500 bg-white/[0.01] rounded-[28px] border border-white/5 overflow-hidden">
                                     <div className="flex flex-1 overflow-hidden h-full">
-                                        <div className="w-47 border-r border-white/5 hidden md:flex flex-col bg-white/[0.01]">
+                                        <div className="w-48 border-r border-white/5 hidden md:flex flex-col bg-white/[0.01]">
                                             <div className="p-8 border-b border-white/5 flex items-center justify-between">
                                                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Channels</span>
                                                 <span className="text-[9px] font-bold px-2 py-1 bg-white/5 rounded-lg">{userMatches.length}</span>
@@ -643,7 +642,7 @@ export default function Dashboard() {
                                                                 {msg.file_url && (
                                                                     <div className={`max-w-[70%] border border-white/5 rounded-2xl overflow-hidden shadow-2xl bg-[#111] p-1 ${msg.sender_id === user?.id ? "rounded-tr-none" : "rounded-tl-none"}`}>
                                                                         {msg.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                                                            <img src={`${BASE_URL}/uploads/chat_files/${msg.file_url}`} className="max-w-full max-h-[350px] object-cover rounded-xl" />
+                                                                            <img src={`${BASE_URL}/uploads/chat_files/${encodeURIComponent(msg.file_url)}`} className="max-w-full max-h-[350px] object-cover rounded-xl" />
                                                                         ) : (
                                                                             <a href={`${BASE_URL}/uploads/chat_files/${msg.file_url}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-8 bg-white/5 text-[10px] font-bold uppercase text-white hover:text-[#FF2E7E]">
                                                                                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xl">📂</div>
@@ -802,8 +801,8 @@ export default function Dashboard() {
                                                         userMatches.filter(m => m.my_report_id === itemDetailData.id || m.matched_report_id === itemDetailData.id).map((match, idx) => (
                                                             <div key={idx} className="bg-white/[0.02] border border-white/5 p-6 rounded-[32px] hover:border-[#FF2E7E]/30 transition-all flex items-center justify-between group">
                                                                 <div className="flex items-center gap-5">
-                                                                    <div className="w-16 h-16 bg-black rounded-2xl overflow-hidden border border-white/5 group-hover:scale-105 transition-transform duration-500">
-                                                                        {match.matched_image ? <img src={`${BASE_URL}/uploads/${match.matched_image}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl opacity-20">📦</div>}
+                                    <div className="w-16 h-16 bg-black rounded-2xl overflow-hidden border border-white/5 group-hover:scale-105 transition-transform duration-500">
+                                                                        {match.matched_image ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(match.matched_image)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl opacity-20">📦</div>}
                                                                     </div>
                                                                     <div>
                                                                         <div className="text-[9px] font-black text-[#FF2E7E] uppercase tracking-widest mb-1">{match.similarity_score}% Match Confidence</div>
@@ -826,7 +825,7 @@ export default function Dashboard() {
                                             <div className="bg-[#0c0c0c] border border-white/5 rounded-[40px] overflow-hidden group relative shadow-2xl">
                                                 <div className="aspect-[4/5]">
                                                     {itemDetailData.image_url ? (
-                                                        <img src={`${BASE_URL}/uploads/${itemDetailData.image_url}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3000ms]" />
+                                                        <img src={`${BASE_URL}/uploads/${encodeURIComponent(itemDetailData.image_url)}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3000ms]" />
                                                     ) : (
                                                         <div className="w-full h-full flex flex-col items-center justify-center bg-white/[0.01] opacity-20 grayscale">
                                                             <div className="text-8xl mb-4">📂</div>

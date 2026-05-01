@@ -108,7 +108,7 @@ export default function ItemDetails() {
                             <div className="relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-[#0a0a0a] border border-white/5 aspect-square sm:aspect-[4/5] shadow-2xl">
                                 {item.image_url ? (
                                     <img
-                                        src={`${BASE_URL}/uploads/${item.image_url}`}
+                                        src={`${BASE_URL}/uploads/${encodeURIComponent(item.image_url)}`}
                                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                                         alt={item.item_name}
                                     />
@@ -199,7 +199,7 @@ export default function ItemDetails() {
                                                 <div className="flex items-center gap-4 md:gap-6">
                                                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden bg-[#111] border border-white/5 shadow-xl flex-shrink-0">
                                                         {match.matched_image ? (
-                                                            <img src={`${BASE_URL}/uploads/${match.matched_image}`} className="w-full h-full object-cover" alt="Match" />
+                                                            <img src={`${BASE_URL}/uploads/${encodeURIComponent(match.matched_image)}`} className="w-full h-full object-cover" alt="Match" />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center text-xl opacity-10">📦</div>
                                                         )}
