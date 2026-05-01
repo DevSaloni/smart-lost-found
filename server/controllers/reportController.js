@@ -1,5 +1,7 @@
 import { createReport, getUserReports, getReportById, getAllReportsForBrowse, updateReport } from "../models/reportModel.js";
 import { findMatchesForReport } from "../services/matchService.js";
+import fs from "fs";
+import path from "path";
 
 export const createReportController = async (req, res) => {
     try {
@@ -47,6 +49,14 @@ export const createReportController = async (req, res) => {
         });
 
     } catch (error) {
+        // Cleanup: If report creation fails, delete the uploaded file
+        if (req.file) {
+            const filePath = path.join(process.cwd(), "uploads", req.file.filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
         console.error("DEBUG - Report Submission Error:", {
             userId: req.user?.id,
             error: error.message
@@ -131,7 +141,6 @@ export const updateReportController = async (req, res) => {
             lng
         };
 
-        // Check if report is already resolved
         const currentReport = await getReportById(id);
         if (currentReport && currentReport.status === 'resolved') {
             return res.status(400).json({ error: "This report is already resolved and cannot be edited." });
@@ -140,7 +149,20 @@ export const updateReportController = async (req, res) => {
         const updatedReport = await updateReport(id, req.user.id, reportData);
 
         if (!updatedReport) {
+            // Cleanup the newly uploaded image since the DB update failed
+            if (req.file) {
+                const filePath = path.join(process.cwd(), "uploads", req.file.filename);
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            }
             return res.status(404).json({ error: "Report not found or you are not authorized to edit it" });
+        }
+
+        // SUCCESS: Now delete the OLD image if it was replaced
+        if (req.file && currentReport && currentReport.image_url) {
+            const oldImagePath = path.join(process.cwd(), "uploads", currentReport.image_url);
+            if (fs.existsSync(oldImagePath)) {
+                fs.unlinkSync(oldImagePath);
+            }
         }
 
         // Trigger Matchmaking in the background on Update
@@ -153,6 +175,14 @@ export const updateReportController = async (req, res) => {
         });
 
     } catch (error) {
+        // Cleanup: If update fails, delete the newly uploaded file
+        if (req.file) {
+            const filePath = path.join(process.cwd(), "uploads", req.file.filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
         console.error("Error updating report:", error);
         res.status(500).json({ error: error.message || "Server error" });
     }
