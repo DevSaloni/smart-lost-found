@@ -294,7 +294,13 @@ export default function AuthPage() {
                         <>
                             {/* Google Button */}
                             <button
-                                onClick={() => loginWithGoogle()}
+                                onClick={() => {
+                                    if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+                                        toast.error("Google Login is not configured. Please add VITE_GOOGLE_CLIENT_ID to environment variables.");
+                                        return;
+                                    }
+                                    loginWithGoogle();
+                                }}
                                 className="w-full flex items-center justify-center gap-3 py-3 bg-white text-black text-[11px] font-bold tracking-widest rounded-xl hover:bg-gray-200 transition mb-4 uppercase"
                             >
                                 <svg className="w-4 h-4" viewBox="0 0 24 24">

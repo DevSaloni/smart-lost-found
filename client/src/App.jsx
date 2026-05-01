@@ -47,13 +47,23 @@ function AppContent() {
 }
 
 function App() {
-    return (
-        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-            <AuthProvider>
-                <AppContent />
-            </AuthProvider>
-        </GoogleOAuthProvider>
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    
+    if (!clientId) {
+        console.warn("VITE_GOOGLE_CLIENT_ID is missing. Google Login will not work. Please add it to your .env file or hosting environment variables.");
+    }
+
+    const content = (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
     );
+
+    return clientId ? (
+        <GoogleOAuthProvider clientId={clientId}>
+            {content}
+        </GoogleOAuthProvider>
+    ) : content;
 }
 
 export default App;
