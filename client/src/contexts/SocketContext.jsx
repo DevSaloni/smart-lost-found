@@ -39,8 +39,17 @@ export const SocketProvider = ({ children, user }) => {
     useEffect(() => {
         if (user) {
             fetchNotifications();
-            const newSocket = io(BASE_URL);
+            const newSocket = io(BASE_URL, {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 2000
+            });
             setSocket(newSocket);
+
+            newSocket.on('connect_error', (err) => {
+                console.error('Socket connection error:', err.message);
+            });
 
             newSocket.on('connect', () => {
                 console.log('Connected to socket server');
