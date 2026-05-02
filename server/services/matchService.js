@@ -1,26 +1,45 @@
 import pool from "../config/db.js";
 import { createMatch } from "../models/matchModel.js";
 import { createNotification } from "../models/notificationModel.js";
-import { io } from "../index.js";
 import { sendExternalNotification } from "./notificationService.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getIO } from "../config/socket.js";
 import fs from "fs";
 import path from "path";
+import axios from "axios";
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
- * Helper to convert local file to Gemini part object
+ * Helper to convert file (local or URL) to Gemini part object
  */
-const fileToGenerativePart = (path, mimeType) => {
-    if (!fs.existsSync(path)) return null;
-    return {
-        inlineData: {
-            data: Buffer.from(fs.readFileSync(path)).toString("base64"),
-            mimeType
-        },
-    };
+const fileToGenerativePart = async (filePath, mimeType) => {
+    try {
+        if (!filePath) return null;
+
+        let data;
+        if (filePath.startsWith('http')) {
+            // Handle Cloudinary/Web URL
+            const response = await axios.get(filePath, { responseType: 'arraybuffer' });
+            data = Buffer.from(response.data).toString("base64");
+        } else {
+            // Handle Local File (backward compatibility)
+            const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), "uploads", filePath);
+            if (!fs.existsSync(absolutePath)) return null;
+            data = Buffer.from(fs.readFileSync(absolutePath)).toString("base64");
+        }
+
+        return {
+            inlineData: {
+                data,
+                mimeType
+            },
+        };
+    } catch (err) {
+        console.error("Error processing image for Gemini:", err.message);
+        return null;
+    }
 };
 
 /**
@@ -28,8 +47,14 @@ const fileToGenerativePart = (path, mimeType) => {
  */
 const calculateStringSimilarity = (str1, str2) => {
     if (!str1 || !str2) return 0;
-    const s1 = str1.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    const s2 = str2.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const s1_raw = str1.trim().toLowerCase();
+    const s2_raw = str2.trim().toLowerCase();
+
+    // Exact match boost
+    if (s1_raw === s2_raw) return 100;
+
+    const s1 = s1_raw.split(/\s+/).filter(w => w.length > 2);
+    const s2 = s2_raw.split(/\s+/).filter(w => w.length > 2);
     if (s1.length === 0 || s2.length === 0) return 0;
 
     const intersection = s1.filter(word => s2.includes(word));
@@ -60,9 +85,10 @@ const calculateSimilarity = (item1, item2) => {
  */
 const calculateAISimilarity = async (item1, item2) => {
     try {
-        if (!process.env.GEMINI_API_KEY) return null;
-
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
+            console.warn("GEMINI_API_KEY is missing or default. Falling back to text-only matching.");
+            return null;
+        }
 
         const prompt = `
             You are a professional Lost and Found matching system. 
@@ -102,17 +128,34 @@ const calculateAISimilarity = async (item1, item2) => {
 
         // Add images if they exist
         if (item1.image_url) {
-            const imgPath = path.join(process.cwd(), "uploads", item1.image_url);
-            const part = fileToGenerativePart(imgPath, "image/jpeg");
+            const part = await fileToGenerativePart(item1.image_url, "image/jpeg");
             if (part) visualParts.push(part);
         }
         if (item2.image_url) {
-            const imgPath = path.join(process.cwd(), "uploads", item2.image_url);
-            const part = fileToGenerativePart(imgPath, "image/jpeg");
+            const part = await fileToGenerativePart(item2.image_url, "image/jpeg");
             if (part) visualParts.push(part);
         }
 
-        const result = await model.generateContent([prompt, ...visualParts]);
+        let result = null;
+        let lastError = null;
+        const modelNames = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro", "gemini-1.0-pro"];
+
+        for (const name of modelNames) {
+            try {
+                const model = genAI.getGenerativeModel({ model: name });
+                console.log(`DEBUG - AI: Attempting with model "${name}"`);
+                result = await model.generateContent([prompt, ...visualParts]);
+                if (result) break;
+            } catch (err) {
+                lastError = err;
+                console.warn(`DEBUG - AI: Model "${name}" failed.`);
+            }
+        }
+
+        if (!result) {
+            throw lastError || new Error("All Gemini models failed.");
+        }
+
         const response = await result.response;
         const text = response.text();
 
@@ -123,7 +166,13 @@ const calculateAISimilarity = async (item1, item2) => {
         }
         return null;
     } catch (err) {
-        console.error("AI Similarity Error:", err);
+        if (err.message?.includes('404')) {
+            console.error(`Gemini Model 404 Error: Your API key lacks access to these models. Check Google AI Studio. Error: ${err.message}`);
+        } else if (err.message?.includes('API_KEY_INVALID')) {
+            console.error("Gemini API Key Error: Your API key is invalid.");
+        } else {
+            console.error("AI Similarity Error:", err.message);
+        }
         return null;
     }
 };
@@ -154,12 +203,15 @@ export const findMatchesForReport = async (newReport) => {
             FROM reports r
             JOIN users u ON r.user_id = u.id
             WHERE r.type = $1 
-            AND r.category = $2 
+            AND LOWER(r.category) = LOWER($2) 
             AND r.id != $3
+            AND r.user_id != $4
             AND r.status = 'active';
         `;
 
-        const { rows: candidates } = await pool.query(query, [oppositeType, category, id]);
+        const { rows: candidates } = await pool.query(query, [oppositeType, category, id, user_id]);
+
+        console.log(`DEBUG - Matchmaking: Found ${candidates.length} potential ${oppositeType} candidates in category "${category}"`);
 
         const matches = [];
 
@@ -187,11 +239,11 @@ export const findMatchesForReport = async (newReport) => {
             // Logic: Lost item should be found AFTER it was lost. 
             // If found BEFORE, it's likely not the same item, unless dates are messy.
             if (type === 'lost' && d2 < d1) {
-                if (diffDays > 3) datePenalty = 30; // Significant penalty if found more than 3 days before lost
-                else datePenalty = 10;
+                if (diffDays > 7) datePenalty = 20; // More forgiving date penalty
+                else datePenalty = 5;
             } else if (type === 'found' && d2 > d1) {
-                if (diffDays > 3) datePenalty = 30;
-                else datePenalty = 10;
+                if (diffDays > 7) datePenalty = 20;
+                else datePenalty = 5;
             }
 
             // 3. Intelligence Layer (AI Text + Vision)
@@ -200,21 +252,27 @@ export const findMatchesForReport = async (newReport) => {
 
             const aiResult = await calculateAISimilarity(newReport, candidate);
 
-            if (aiResult && aiResult.score !== undefined) {
-                // AI Score is primary (80%), Location is secondary (20%)
+            if (aiResult && typeof aiResult.score === 'number') {
+                // AI Score is primary (85%), Location is secondary (15%)
                 totalSimilarity = Math.round((aiResult.score * 0.85) + (locationScore * 0.15));
-                matchReason = aiResult.reason;
+                matchReason = aiResult.reason || "AI matched visual/text descriptions";
             } else {
                 const textSimilarity = calculateSimilarity(newReport, candidate);
                 totalSimilarity = Math.round((textSimilarity * 0.7) + (locationScore * 0.3));
+                matchReason = "Text-based similarity detected";
             }
 
             // Apply Date Penalty
             totalSimilarity = Math.max(0, totalSimilarity - datePenalty);
 
             // 4. Process the Match
-            // Increase threshold slightly for professional feel, but ensure high quality
-            if (totalSimilarity >= 45) {
+            console.log(`DEBUG - Final Score: Item "${candidate.item_name}" -> Score: ${totalSimilarity}% (Penalty: ${datePenalty})`);
+
+            // Threshold: 40% for quality matches
+            const threshold = 40;
+
+            if (totalSimilarity >= threshold) {
+                console.log(`MATCH FOUND! [${totalSimilarity}%] between Report ${id} and ${candidate.id}`);
                 const lost_report_id = type === 'lost' ? id : candidate.id;
                 const found_report_id = type === 'found' ? id : candidate.id;
 
@@ -235,7 +293,11 @@ export const findMatchesForReport = async (newReport) => {
                     message: notificationMessage
                 });
 
-                io.to(`user_${candidate.user_id}`).emit("match_found", {
+                const io = getIO();
+                const roomName = `user_${candidate.user_id}`;
+                console.log(`DEBUG - Socket: Emitting match_found to ${roomName}`);
+
+                io.to(roomName).emit("match_found", {
                     message: notificationMessage,
                     report_id: candidate.id,
                     match_id: match.id,
@@ -257,7 +319,7 @@ export const findMatchesForReport = async (newReport) => {
                 if (creatorRows.length > 0) {
                     const creator = creatorRows[0];
                     const creatorNotificationMessage = `[Match Found] We found a ${totalSimilarity}% match for your new ${type} report!`;
-                    
+
                     await createNotification({
                         user_id: user_id,
                         report_id: id,
@@ -265,7 +327,11 @@ export const findMatchesForReport = async (newReport) => {
                         message: creatorNotificationMessage
                     });
 
-                    io.to(`user_${user_id}`).emit("match_found", {
+                    const io = getIO();
+                    const creatorRoom = `user_${user_id}`;
+                    console.log(`DEBUG - Socket: Emitting match_found to creator room ${creatorRoom}`);
+
+                    io.to(creatorRoom).emit("match_found", {
                         message: creatorNotificationMessage,
                         report_id: id,
                         match_id: match.id,

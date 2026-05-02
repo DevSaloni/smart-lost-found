@@ -20,7 +20,7 @@ import { SocketProvider } from './contexts/SocketContext';
 
 function AppContent() {
     const { user } = useAuth();
-    
+
     return (
         <SocketProvider user={user}>
             <div className="min-h-screen bg-[#050505]">
@@ -48,7 +48,7 @@ function AppContent() {
 
 function App() {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    
+
     if (!clientId) {
         console.warn("VITE_GOOGLE_CLIENT_ID is missing. Google Login will not work. Please add it to your .env file or hosting environment variables.");
     }

@@ -54,6 +54,20 @@ export const createReport = async (reportData) => {
     return result.rows[0];
 };
 
+export const checkDuplicateReport = async (user_id, item_name, type, location) => {
+    const query = `
+        SELECT id FROM reports 
+        WHERE user_id = $1 
+        AND LOWER(item_name) = LOWER($2) 
+        AND type = $3 
+        AND LOWER(location) = LOWER($4)
+        AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 hour'
+        LIMIT 1;
+    `;
+    const result = await pool.query(query, [user_id, item_name, type, location]);
+    return result.rows.length > 0;
+};
+
 export const getUserReports = async (userId) => {
     const query = `
         SELECT * FROM reports 

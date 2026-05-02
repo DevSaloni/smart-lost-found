@@ -99,7 +99,8 @@ export default function ReportItem() {
                 alert_method: item.alert_method || "push"
             });
             if (item.image_url) {
-                setImagePreview(`${BASE_URL}/uploads/${item.image_url}`);
+                const previewUrl = item.image_url.startsWith('http') ? item.image_url : `${BASE_URL}/uploads/${encodeURIComponent(item.image_url)}`;
+                setImagePreview(previewUrl);
             }
         }
         if (location.state?.initialData) {

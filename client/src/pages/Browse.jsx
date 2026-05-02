@@ -31,6 +31,7 @@ export default function Browse() {
     const [selectedCategory, setSelectedCategory] = useState("All categories");
     const [selectedDateRange, setSelectedDateRange] = useState("All time");
     const [selectedStatus, setSelectedStatus] = useState("Active");
+    const [selectedType, setSelectedType] = useState("lost");
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
@@ -38,8 +39,8 @@ export default function Browse() {
             try {
                 setLoading(true);
                 const queryParams = new URLSearchParams();
+                queryParams.append("type", selectedType);
 
-                // Allow Browse page to show all items by default, or filter by type if needed
                 if (activeQuickFilter !== "ALL" && !quickFilters.includes(activeQuickFilter)) {
                     queryParams.append("type", activeQuickFilter.toLowerCase());
                 }
@@ -79,7 +80,7 @@ export default function Browse() {
             }
         };
         fetchReports();
-    }, [activeQuickFilter, selectedCategory, selectedStatus, selectedSort, searchQuery, selectedDateRange]);
+    }, [activeQuickFilter, selectedCategory, selectedStatus, selectedSort, searchQuery, selectedDateRange, selectedType]);
 
     return (
         <div className="bg-black text-white min-h-screen pt-30 pb-20 px-4">
@@ -243,8 +244,8 @@ export default function Browse() {
                                     <div className="flex-1 flex items-center justify-center py-4 group-hover:scale-110 transition-transform duration-500">
                                         {report.image_url ? (
                                             <div className="w-full h-32 rounded-[20px] overflow-hidden border border-white/10 shadow-2xl">
-                                                <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" alt={report.item_name} />
-                                            </div>
+                                                 <img src={report.image_url.startsWith('http') ? report.image_url : `${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" alt={report.item_name} />
+                                             </div>
                                         ) : (
                                             <span className="text-6xl drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{getCategoryIcon(report.category)}</span>
                                         )}

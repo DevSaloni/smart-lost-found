@@ -97,7 +97,7 @@ export default function MatchDetails() {
                             </div>
                             <h2 className="text-2xl font-black  text-white mb-6 group-hover:text-[#FF2E7E] transition-colors">{match.lost_item}</h2>
                             <div className="aspect-video rounded-3xl bg-black border border-white/5 overflow-hidden shadow-2xl mb-8">
-                                {match.lost_img ? <img src={`${BASE_URL}/uploads/${match.lost_img}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full flex items-center justify-center text-6xl opacity-20">📦</div>}
+                                {match.lost_img ? <img src={match.lost_img.startsWith('http') ? match.lost_img : `${BASE_URL}/uploads/${encodeURIComponent(match.lost_img)}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full flex items-center justify-center text-6xl opacity-20">📦</div>}
                             </div>
                             <p className="text-gray-500 text-[15px] leading-relaxed mb-8 italic">"{match.lost_desc}"</p>
                             <div className="grid grid-cols-2 gap-6 pt-8 border-t border-white/5">
@@ -121,7 +121,7 @@ export default function MatchDetails() {
                             </div>
                             <h2 className="text-2xl font-black  text-white mb-6 group-hover:text-[#FF2E7E] transition-colors">{match.found_item}</h2>
                             <div className="aspect-video rounded-3xl bg-black border border-white/5 overflow-hidden shadow-2xl mb-8">
-                                {match.found_img ? <img src={`${BASE_URL}/uploads/${match.found_img}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full flex items-center justify-center text-6xl opacity-20">📦</div>}
+                                {match.found_img ? <img src={match.found_img.startsWith('http') ? match.found_img : `${BASE_URL}/uploads/${encodeURIComponent(match.found_img)}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full flex items-center justify-center text-6xl opacity-20">📦</div>}
                             </div>
                             <p className="text-gray-500 text-[15px] leading-relaxed mb-8 italic">"{match.found_desc}"</p>
                             <div className="grid grid-cols-2 gap-6 pt-8 border-t border-white/5">

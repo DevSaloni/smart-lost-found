@@ -28,6 +28,7 @@ export default function Dashboard() {
     const [selectedItemId, setSelectedItemId] = useState(null);
     const [itemDetailData, setItemDetailData] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [showMatchPopup, setShowMatchPopup] = useState(null);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -158,7 +159,15 @@ export default function Dashboard() {
                 if (matchesRes.ok) setUserMatches(matchesData.matches);
             };
             refreshData();
-            toast.success("AI found a new match for your report!", { icon: "🛰️" });
+            
+            // Show the premium popup
+            setShowMatchPopup(data);
+            toast.success("AI matched your report in real-time!", { icon: "🛰️" });
+            
+            // Play subtle sound
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.volume = 0.3;
+            audio.play().catch(() => { });
         };
 
         socket.on("new_message", handleNewMessage);
@@ -379,7 +388,14 @@ export default function Dashboard() {
                                                 <div key={i} className="p-8 flex items-center justify-between hover:bg-white/[0.02] transition-all group">
                                                     <div className="flex items-center gap-6">
                                                         <div className="w-14 h-14 bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-inner">
-                                                            {report.image_url ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
+                                                            {report.image_url ? (
+    <img 
+        src={report.image_url.startsWith('http') ? report.image_url : `${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} 
+        className="w-full h-full object-cover" 
+    />
+) : (
+    <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
+)}
                                                         </div>
                                                         <div>
                                                             <h4 className="text-lg font-bold text-white mb-0.5">{report.item_name}</h4>
@@ -411,7 +427,14 @@ export default function Dashboard() {
                                                             <td className="px-6 py-4">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="w-10 h-10 bg-white/5 rounded-lg overflow-hidden border border-white/5 flex-shrink-0">
-                                                                        {report.image_url ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                                                                        {report.image_url ? (
+    <img 
+        src={report.image_url.startsWith('http') ? report.image_url : `${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} 
+        className="w-full h-full object-cover" 
+    />
+) : (
+    <div className="w-full h-full flex items-center justify-center text-lg">📦</div>
+)}
                                                                     </div>
                                                                     <span className="text-xs font-bold text-white truncate max-w-[120px]">{report.item_name}</span>
                                                                 </div>
@@ -473,10 +496,13 @@ export default function Dashboard() {
                                                         <div className="flex items-center gap-8">
                                                             <div className="w-20 h-20 bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-inner flex-shrink-0">
                                                                 {report.image_url ? (
-                                                                    <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" />
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-white/5 to-transparent">📦</div>
-                                                                )}
+    <img 
+        src={report.image_url.startsWith('http') ? report.image_url : `${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} 
+        className="w-full h-full object-cover" 
+    />
+) : (
+    <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-white/5 to-transparent">📦</div>
+)}
                                                             </div>
                                                             <div>
                                                                 <div className="flex items-center gap-3 mb-1">
@@ -533,7 +559,14 @@ export default function Dashboard() {
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="w-10 h-10 bg-white/5 rounded-lg overflow-hidden border border-white/5 flex-shrink-0">
-                                                                            {report.image_url ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                                                                            {report.image_url ? (
+    <img 
+        src={report.image_url.startsWith('http') ? report.image_url : `${BASE_URL}/uploads/${encodeURIComponent(report.image_url)}`} 
+        className="w-full h-full object-cover" 
+    />
+) : (
+    <div className="w-full h-full flex items-center justify-center text-lg">📦</div>
+)}
                                                                         </div>
                                                                         <div className="flex flex-col">
                                                                             <span className="text-[12px] font-bold text-white truncate max-w-[150px]">{report.item_name}</span>
@@ -569,7 +602,14 @@ export default function Dashboard() {
                                         {userMatches.length === 0 ? <div className="p-24 text-center text-gray-700">Awaiting match verification.</div> : userMatches.map((match, i) => (
                                             <div key={i} className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-10 group hover:border-[#FF2E7E]/40 transition-all">
                                                 <div className="w-32 h-32 bg-white/5 rounded-2xl overflow-hidden shadow-2xl relative border border-white/5">
-                                                    {match.matched_image ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(match.matched_image)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                                                    {match.matched_image ? (
+    <img 
+        src={match.matched_image.startsWith('http') ? match.matched_image : `${BASE_URL}/uploads/${encodeURIComponent(match.matched_image)}`} 
+        className="w-full h-full object-cover" 
+    />
+) : (
+    <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>
+)}
                                                 </div>
                                                 <div className="flex-1 text-center md:text-left">
                                                     <h3 className="text-xl font-bold mb-1 text-white">{match.matched_item}</h3>
@@ -642,13 +682,16 @@ export default function Dashboard() {
                                                                 {msg.file_url && (
                                                                     <div className={`max-w-[70%] border border-white/5 rounded-2xl overflow-hidden shadow-2xl bg-[#111] p-1 ${msg.sender_id === user?.id ? "rounded-tr-none" : "rounded-tl-none"}`}>
                                                                         {msg.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                                                            <img src={`${BASE_URL}/uploads/chat_files/${encodeURIComponent(msg.file_url)}`} className="max-w-full max-h-[350px] object-cover rounded-xl" />
-                                                                        ) : (
-                                                                            <a href={`${BASE_URL}/uploads/chat_files/${msg.file_url}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-8 bg-white/5 text-[10px] font-bold uppercase text-white hover:text-[#FF2E7E]">
-                                                                                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xl">📂</div>
-                                                                                <span>Download Asset</span>
-                                                                            </a>
-                                                                        )}
+    <img 
+        src={msg.file_url.startsWith('http') ? msg.file_url : `${BASE_URL}/uploads/chat_files/${encodeURIComponent(msg.file_url)}`} 
+        className="max-w-full max-h-[350px] object-cover rounded-xl" 
+    />
+) : (
+    <a href={msg.file_url.startsWith('http') ? msg.file_url : `${BASE_URL}/uploads/chat_files/${msg.file_url}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-8 bg-white/5 text-[10px] font-bold uppercase text-white hover:text-[#FF2E7E]">
+        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xl">📂</div>
+        <span>Download Asset</span>
+    </a>
+)}
                                                                     </div>
                                                                 )}
                                                                 {msg.message && (
@@ -802,7 +845,7 @@ export default function Dashboard() {
                                                             <div key={idx} className="bg-white/[0.02] border border-white/5 p-6 rounded-[32px] hover:border-[#FF2E7E]/30 transition-all flex items-center justify-between group">
                                                                 <div className="flex items-center gap-5">
                                     <div className="w-16 h-16 bg-black rounded-2xl overflow-hidden border border-white/5 group-hover:scale-105 transition-transform duration-500">
-                                                                        {match.matched_image ? <img src={`${BASE_URL}/uploads/${encodeURIComponent(match.matched_image)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl opacity-20">📦</div>}
+                                                                        {match.matched_image ? <img src={match.matched_image.startsWith('http') ? match.matched_image : `${BASE_URL}/uploads/${encodeURIComponent(match.matched_image)}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl opacity-20">📦</div>}
                                                                     </div>
                                                                     <div>
                                                                         <div className="text-[9px] font-black text-[#FF2E7E] uppercase tracking-widest mb-1">{match.similarity_score}% Match Confidence</div>
@@ -825,7 +868,7 @@ export default function Dashboard() {
                                             <div className="bg-[#0c0c0c] border border-white/5 rounded-[40px] overflow-hidden group relative shadow-2xl">
                                                 <div className="aspect-[4/5]">
                                                     {itemDetailData.image_url ? (
-                                                        <img src={`${BASE_URL}/uploads/${encodeURIComponent(itemDetailData.image_url)}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3000ms]" />
+                                                        <img src={itemDetailData.image_url.startsWith('http') ? itemDetailData.image_url : `${BASE_URL}/uploads/${encodeURIComponent(itemDetailData.image_url)}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3000ms]" />
                                                     ) : (
                                                         <div className="w-full h-full flex flex-col items-center justify-center bg-white/[0.01] opacity-20 grayscale">
                                                             <div className="text-8xl mb-4">📂</div>
@@ -883,6 +926,45 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+            {/* PREMIUM MATCH FOUND POPUP */}
+            {showMatchPopup && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-500" onClick={() => setShowMatchPopup(null)}></div>
+                    <div className="relative w-full max-w-md bg-[#0c0c0c] border border-[#FF2E7E]/30 rounded-[40px] p-10 shadow-[0_0_50px_rgba(255,46,126,0.2)] animate-in zoom-in-95 duration-300 text-center">
+                        <div className="w-20 h-20 bg-[#FF2E7E]/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-[#FF2E7E]/20 relative">
+                            <span className="text-4xl animate-bounce">🛰️</span>
+                            <div className="absolute inset-0 rounded-3xl bg-[#FF2E7E]/20 animate-ping opacity-20"></div>
+                        </div>
+                        
+                        <span className="text-[10px] font-black text-[#FF2E7E] uppercase tracking-[5px] block mb-2">Neural Match Detected</span>
+                        <h2 className="text-2xl font-bold text-white mb-4 uppercase tracking-tight">Match Correlation Found!</h2>
+                        
+                        <div className="bg-white/5 border border-white/5 p-6 rounded-3xl mb-8">
+                            <p className="text-sm text-gray-400 font-medium leading-relaxed italic">
+                                "{showMatchPopup.message || "A high-confidence match has been discovered by the AI system."}"
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <button 
+                                onClick={() => { 
+                                    setActiveTab("matches"); 
+                                    setShowMatchPopup(null); 
+                                }} 
+                                className="w-full py-4 bg-[#FF2E7E] text-white font-black uppercase text-[11px] tracking-[3px] rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
+                            >
+                                View Match Details
+                            </button>
+                            <button 
+                                onClick={() => setShowMatchPopup(null)} 
+                                className="w-full py-4 bg-white/5 border border-white/10 text-gray-500 font-bold uppercase text-[11px] tracking-[3px] rounded-2xl hover:bg-white/10 hover:text-white transition-all"
+                            >
+                                Acknowledge
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

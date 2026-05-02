@@ -1,5 +1,5 @@
 import pool from "../config/db.js";
-import { io } from "../index.js";
+import { getIO } from "../config/socket.js";
 import { sendExternalNotification } from "../services/notificationService.js";
 
 // --- MESSAGING CONTROLLERS ---
@@ -7,7 +7,7 @@ import { sendExternalNotification } from "../services/notificationService.js";
 export const sendMessage = async (req, res) => {
     const { match_id, receiver_id, message } = req.body;
     const sender_id = req.user.id;
-    const file_url = req.file ? req.file.filename : null;
+    const file_url = req.file ? req.file.path : null;
 
     try {
         const result = await pool.query(
@@ -16,7 +16,7 @@ export const sendMessage = async (req, res) => {
         );
 
         // Emit real-time socket event for the message
-        io.to(`user_${receiver_id}`).emit("new_message", {
+        getIO().to(`user_${receiver_id}`).emit("new_message", {
             ...result.rows[0],
             sender_name: req.user.name
         });
@@ -146,7 +146,7 @@ export const verifyHandoffCode = async (req, res) => {
         await pool.query("UPDATE users SET trust_score = trust_score + 10 WHERE id = $1", [handoff.finder_id]);
 
         // Emit real-time socket event to the OWNER to refresh their dashboard
-        io.to(`user_${handoff.owner_id}`).emit("handoff_completed", {
+        getIO().to(`user_${handoff.owner_id}`).emit("handoff_completed", {
             match_id: match_id,
             message: "The finder has successfully verified the handoff! Your item is now marked as returned."
         });

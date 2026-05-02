@@ -11,13 +11,7 @@ import {
 
 const router = express.Router();
 
-// Multer config for chat attachments
-const storage = multer.diskStorage({
-    destination: "uploads/chat_files/",
-    filename: (req, file, cb) => {
-        cb(null, `chat_${Date.now()}${path.extname(file.originalname)}`);
-    }
-});
+import { storage } from "../config/cloudinary.js";
 const upload = multer({ storage });
 
 router.post("/messages", protect, upload.single("file"), sendMessage);
